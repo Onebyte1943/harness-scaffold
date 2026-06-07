@@ -35,7 +35,7 @@ Harness solves this with a **one brain, many frontends** architecture:
 
 - **Playbooks** — Tool-neutral step-by-step procedures for every engineering phase (14 commands from `constitution` to `doctor`)
 - **Spec-Driven Development (SDD)** — Per-change artifacts live at `specs/<NNN>-<slug>/` (spec-kit flat convention)
-- **Knowledge base** — Diátaxis + C4 + arc42 + BIZBOK + Tech Radar hybrid: 8 fixed docs + `how-to/` recipes + ADRs, all under `.harness/knowledge/`
+- **Knowledge base** — Diátaxis + C4 + arc42 + BIZBOK + Tech Radar hybrid: 7 fixed docs + `how-to/` recipes + ADRs, all under `.harness/knowledge/`
 - **Flow levels** — Scale ceremony to task size: `quick` (4 commands) → `standard` (7) → `full` (10+) → `epic` (multi-change)
 - **Verify as invariant** — A single `verify.sh` script is invoked by editor hooks, pre-commit, and GitLab CI — so no two sensors can disagree about whether the build is green
 - **Adapters** — Thin translation layers that map harness commands into each agent's native format (slash commands, rules, instructions)
@@ -71,7 +71,7 @@ your-project/
 │   ├── playbooks/               # 14 workflow playbooks
 │   ├── scripts/sh/              # Single-source-of-truth verify
 │   ├── memory/                  # L-RULE (constitution lives here)
-│   ├── knowledge/               # 8 docs + how-to/ + adr/
+│   ├── knowledge/               # 7 docs + how-to/ + adr/
 │   ├── principle-packs/         # Seed principles for /hx-constitution
 │   ├── evals/                   # Regression samples for /hx-doctor
 │   └── templates/               # Project-local template overrides

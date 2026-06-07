@@ -1,4 +1,4 @@
-"""Canonical directory layout and command/playbook mapping (design v2).
+"""Canonical directory layout and command/playbook mapping (design v3).
 
 Single source of truth for every path the scaffold writes or reads.
 """
@@ -17,7 +17,7 @@ PRINCIPLE_PACKS_DIR = f"{HARNESS_DIR}/principle-packs"
 TEMPLATES_DIR = f"{HARNESS_DIR}/templates"
 EVALS_DIR = f"{HARNESS_DIR}/evals"
 
-# L-RULE: constitution lives inside the brain (design v2)
+# L-RULE: constitution lives inside the brain (design v3)
 CONSTITUTION_PATH = f"{MEMORY_DIR}/constitution.md"
 
 # Per-change specs at repo root (spec-kit flat convention)
@@ -31,7 +31,7 @@ PROGRESS_PATH = f"{AGENT_DIR}/progress.md"
 GITLAB_CI_CONFIG = ".gitlab-ci.yml"
 PRE_COMMIT_CONFIG = ".pre-commit-config.yaml"
 
-# The 8 knowledge base documents produced by /hx-baseline.
+# The 7 knowledge base documents produced by /hx-baseline.
 KNOWLEDGE_DOCS: list[str] = [
     "product",
     "architecture",

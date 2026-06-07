@@ -1,4 +1,4 @@
-"""harness doctor — Self-check harness integrity (design v2)."""
+"""harness doctor — Self-check harness integrity (design v3)."""
 
 from __future__ import annotations
 
@@ -222,14 +222,14 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
 
 
 def _check_legacy_layout(project_root: Path) -> list[tuple[str, str, str]]:
-    """Surface the v1 layout — design v2 doesn't migrate, just warns."""
+    """Surface the v1 layout — design v3 doesn't migrate, just warns."""
     results: list[tuple[str, str, str]] = []
     if (project_root / LEGACY_ARTIFACTS_DIR).exists():
         results.append(
             (
                 "warn",
                 f"{LEGACY_ARTIFACTS_DIR}/",
-                "Legacy v1 layout detected — design v2 moved artifacts to "
+                "Legacy v1 layout detected — design v3 moved artifacts to "
                 "specs/ and .harness/knowledge/; review and remove or merge",
             )
         )
@@ -238,7 +238,7 @@ def _check_legacy_layout(project_root: Path) -> list[tuple[str, str, str]]:
             (
                 "warn",
                 LEGACY_CONSTITUTION_PATH,
-                f"Legacy location — design v2 expects {CONSTITUTION_PATH}",
+                f"Legacy location — design v3 expects {CONSTITUTION_PATH}",
             )
         )
     return results

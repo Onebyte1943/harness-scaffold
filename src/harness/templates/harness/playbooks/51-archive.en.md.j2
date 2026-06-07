@@ -27,7 +27,7 @@ command — git / GitLab MR handles merging. There is no delta tree to fold in.
 ## Steps
 
 1. **Confirm the change is live.** Do not archive un-shipped work.
-2. **Refresh affected knowledge docs.** For each of the 8 knowledge files,
+2. **Refresh affected knowledge docs.** For each of the 7 knowledge files,
    update sections impacted by this change so they describe the merged
    code (with `path:line` citations to the new locations):
    - `architecture.md` — modules / boundaries / data flow shifts.
@@ -70,7 +70,7 @@ compounds.
 
 > Provenance
 > - Authoritative paradigm: spec-kit "specs ship with the code" + citation fidelity — no delta tree, no separate merge command (GitLab MR handles merging); `specs/<NNN>-<slug>/` stays in place as the permanent record
-> - Investigation protocol: only run on merged work; diff the merged code against the 8 knowledge docs and refresh affected sections with new `path:line` anchors; run the reference validator so no dangling citation survives in knowledge or active specs
+> - Investigation protocol: only run on merged work; diff the merged code against the 7 knowledge docs and refresh affected sections with new `path:line` anchors; run the reference validator so no dangling citation survives in knowledge or active specs
 > - Output form: post-merge checklist (deployed · knowledge refreshed · validator clean · progress.md closed · specs left in place) + a closing row appended to `.agent/progress.md`
 
 ```markdown

@@ -1,4 +1,4 @@
-"""Tests for core/config.py (design v2)."""
+"""Tests for core/config.py (design v3)."""
 
 from __future__ import annotations
 

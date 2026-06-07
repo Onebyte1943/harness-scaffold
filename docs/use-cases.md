@@ -106,13 +106,13 @@ harness init --agent claude --profile brownfield
 ```
 # In the agent session:
 /hx-constitution   # Synthesize principles from universal + packs + de-facto patterns
-/hx-baseline       # Build the 8-doc knowledge base from real code (with path:line citations)
+/hx-baseline       # Build the 7-doc knowledge base from real code (with path:line citations)
 /hx-next           # Get a routing suggestion for the first real change
 ```
 
 After W0 bootstrap:
 - Engineering principles are documented in `.harness/memory/constitution.md`, each tagged `[enforceable]` or `[inferential]`
-- The 8 knowledge docs under `.harness/knowledge/` give every agent the same grounded mental model of the codebase
+- The 7 knowledge docs under `.harness/knowledge/` give every agent the same grounded mental model of the codebase
 - The agent can now follow the same workflow as every other team member / agent
 
 ## Scenario 5: Multi-Agent Team

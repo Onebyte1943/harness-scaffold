@@ -7,7 +7,7 @@ flow: [standard, full, epic]
 
 ## Purpose
 
-阅读代码库,产出**项目知识库** —— 八份文档,合在一起就是新贡献者
+阅读代码库,产出**项目知识库** —— 七份文档,合在一起就是新贡献者
 (人或 AI) 能开始开发的充分条件。
 
 ## Prerequisites
@@ -30,7 +30,7 @@ flow: [standard, full, epic]
 
 | Tier | Use when | Mandatory items beyond the previous tier |
 |------|----------|------------------------------------------|
-| `L1` survey | 快速 onboarding 阅读;决定是否投入前的 spike | manifest 扫描 · 文件清单 · 顶层架构草图 · 8 份文档骨架齐备,Open Questions 已填 |
+| `L1` survey | 快速 onboarding 阅读;决定是否投入前的 spike | manifest 扫描 · 文件清单 · 顶层架构草图 · 7 份文档骨架齐备,Open Questions 已填 |
 | `L2` standard (默认) | 活跃项目的常规 baseline | `git churn` 热力图 · 依赖面 · 现有传感器盘点 (lint / type / test / hook) · 每个约定都有规范示例 · 内部框架章节注明 owner · **最关键一条流程**的运行时视图 |
 | `L3` deep | 高风险 (安全 · 合规 · 接手不熟悉的遗留系统) | AST/LSP 模块图抽取 · 公共 API 面枚举 (OpenAPI / proto / type exports) · 反推 DB schema · IaC 清单 · 事故史与 bus-factor 分析 · arc42 质量场景填充 · 全部 how-to 配方完成 |
 
@@ -63,9 +63,9 @@ flow: [standard, full, epic]
    `L2`+ 还要算 `git churn` 热点;`L3` 再额外抽取 AST / LSP 模块图、
    枚举公共 API 面、反推 DB schema、清点 IaC。
 3. **引导知识库。** 若 `.harness/knowledge/` 为空,按 *Appendix A* 的骨架
-   写入八个文件 —— 保留它们的 `> Provenance` 段落不动;它告诉下一位
+   写入七个文件 —— 保留它们的 `> Provenance` 段落不动;它告诉下一位
    贡献者这份文档背后的权威与应遵循的调查协议。
-4. **逐文档调查。** 对 8 份文档中的每一份,运行下面 *§ Per-doc
+4. **逐文档调查。** 对 7 份文档中的每一份,运行下面 *§ Per-doc
    investigation methodology* 中的协议。迭代直到该文档满足自己的
    Provenance 契约。每条非平凡断言都引用 `path:line` 或具名非代码来源。
 5. **强制示例。** 对每一条约定 / 技术模式,链接到本仓库中的一个规范
@@ -170,7 +170,7 @@ flow: [standard, full, epic]
 
 ## Outputs
 
-`.harness/knowledge/` 下的 8 份知识文档:
+`.harness/knowledge/` 下的 7 份知识文档:
 
 - `product.md` —— Working Backwards:问题 · 用户 · 价值主张 · 核心能力 ·
   关键旅程 · 成功指标 · 范围 / 非目标。
@@ -206,7 +206,7 @@ flow: [standard, full, epic]
 
 层级专属要求:
 
-- **L1**:全部 8 份文档骨架就位,且至少填了 Problem / Users /
+- **L1**:全部 7 份文档骨架就位,且至少填了 Problem / Users /
   Top-level architecture / Top dependencies / Install command。
 - **L2** (默认):上述全部 **+** `tech-stack.md` 内含 owner 的内部框架
   章节 · `architecture.md` 有最关键流程的运行时视图 · `conventions.md`
@@ -264,7 +264,7 @@ flow: [standard, full, epic]
 
 ## Appendix A — Knowledge base seed (T2)
 
-引导这 8 个文件时,直接照抄下列模板。所有 heading 保留英文;正文跟随
+引导这 7 个文件时,直接照抄下列模板。所有 heading 保留英文;正文跟随
 项目语言。每个种子都带一个 `> Provenance` 段落 —— 不要删;它告诉下一位
 贡献者这份文档背后的权威与应遵循的调查协议。
 

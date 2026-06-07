@@ -1,4 +1,4 @@
-"""harness init — Initialize harness in a repository (design v2)."""
+"""harness init — Initialize harness in a repository (design v3)."""
 
 from __future__ import annotations
 
@@ -332,7 +332,7 @@ def _print_summary(config: HarnessConfig) -> None:
             "[bold]Next steps:[/bold]\n"
             "  1. Run [cyan]/hx-constitution[/cyan] to synthesize "
             "engineering principles\n"
-            "  2. Run [cyan]/hx-baseline[/cyan] to build the 8-doc knowledge base\n"
+            "  2. Run [cyan]/hx-baseline[/cyan] to build the 7-doc knowledge base\n"
             "  3. Run [cyan]/hx-next[/cyan] when in doubt about the next move\n"
             "  4. Run [cyan]harness doctor[/cyan] to verify setup",
             title="W0 Bootstrap",

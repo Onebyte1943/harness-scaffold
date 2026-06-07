@@ -48,7 +48,7 @@ Navigate to your project root and run:
 harness init --agent claude
 ```
 
-This generates the design-v2 footprint, organized into three layers.
+This generates the design-v3 footprint, organized into three layers.
 
 > **Narrative language.** Generated playbooks, `AGENTS.md`, `CLAUDE.md`, and the principle pack ship in **Chinese (`zh`) by default**. Pass `--output-lang en` if your team prefers English narrative. Structural items (section headings, YAML frontmatter, Provenance blocks, paths, IDs, `/hx-*` command names) stay English regardless — see [Advanced Usage → Output Language](advanced-usage.md#output-language).
 
@@ -79,7 +79,7 @@ Tool-neutral core — playbooks, scripts, registry, the seed material agents nee
 │   ├── verify.sh             # Single deterministic sensor
 │   └── lib/common.sh
 ├── memory/                   # L-RULE — constitution.md lands here (lazy)
-├── knowledge/                # L-STATE — 8 docs + how-to/ + adr/ (lazy)
+├── knowledge/                # L-STATE — 7 docs + how-to/ + adr/ (lazy)
 ├── principle-packs/
 │   └── generic.md            # Seed principles for /hx-constitution
 ├── evals/
@@ -102,7 +102,7 @@ specs/                        # Per-change artifacts (lazy, flat NNN-slug layout
 ### 3. The Adapter Layer
 
 Per-agent translation of harness commands into native formats. Both Claude
-and Codex use the same `/hx-<cmd>` surface in design v2.
+and Codex use the same `/hx-<cmd>` surface in design v3.
 
 **Claude Code:**
 ```
@@ -165,7 +165,7 @@ codebase. Each principle is tagged `[enforceable]` (a hard gate) or
 /hx-baseline
 ```
 
-The agent builds the 8-document knowledge base under `.harness/knowledge/`:
+The agent builds the 7-document knowledge base under `.harness/knowledge/`:
 `product`, `architecture`, `tech-stack`, `business`, `conventions`,
 `glossary`, `setup-and-verify`, plus a `how-to/` recipes folder. Every claim
 must cite `path:line` from the real code.

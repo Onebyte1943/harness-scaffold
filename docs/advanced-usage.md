@@ -97,7 +97,7 @@ Controls how deep the knowledge-base investigation goes. Default is `L2`.
 
 | Tier | Use when | Adds beyond previous tier |
 |------|----------|---------------------------|
-| `L1` survey | quick onboarding read; spike before deciding to invest | manifest scan · file inventory · top-level architecture sketch · all 8 doc skeletons filled at least with Open Questions |
+| `L1` survey | quick onboarding read; spike before deciding to invest | manifest scan · file inventory · top-level architecture sketch · all 7 doc skeletons filled at least with Open Questions |
 | `L2` standard (default) | normal baseline on an active project | `git churn` heatmap · dependency surface · existing sensors mapped · canonical exemplar per convention · internal-framework section with owner · runtime view for the single most critical flow |
 | `L3` deep | high-stakes (security · regulatory · taking over an unfamiliar legacy) | AST/LSP module-graph extraction · public-API surface enumerated · DB schema reverse-engineered · IaC inventory · incident history & bus-factor analysis · arc42 quality scenarios · all how-to recipes complete |
 
@@ -172,7 +172,7 @@ For existing codebases with established conventions.
 
 - `AGENTS.md` emphasizes respecting existing patterns
 - `/hx-constitution` includes a third "de-facto patterns" source — principles inferred from the codebase
-- `/hx-baseline` builds the 8-doc knowledge base from real code (with `path:line` citations)
+- `/hx-baseline` builds the 7-doc knowledge base from real code (with `path:line` citations)
 
 ### Greenfield
 
@@ -303,7 +303,7 @@ pre-commit config. Typically only needed after a harness version upgrade.
 ## Customizing Playbooks
 
 After initialization, playbooks in `.harness/playbooks/` are yours to edit.
-Each playbook has this structure (design v2):
+Each playbook has this structure (design v3):
 
 ```markdown
 ---
@@ -536,7 +536,7 @@ project-root/
 ## Migrating from v1
 
 If you have a project on the v1 layout (`harness-artifacts/`, root
-`memory/constitution.md`, `.claude/skills/`, etc.), design v2 deliberately
+`memory/constitution.md`, `.claude/skills/`, etc.), design v3 deliberately
 does **not** migrate it for you. Instead:
 
 1. `harness doctor` will flag legacy paths as a non-blocking warning

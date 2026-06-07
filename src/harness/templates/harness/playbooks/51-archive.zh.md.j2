@@ -26,7 +26,7 @@ command —— git / GitLab MR 负责合并。也没有 delta 树需要回流。
 ## Steps
 
 1. **确认变更已上线。** 不要为未发布的工作做 archive。
-2. **刷新受影响的 knowledge 文档。** 对 8 份 knowledge 文件中受本次
+2. **刷新受影响的 knowledge 文档。** 对 7 份 knowledge 文件中受本次
    变更影响的小节做更新,使其描述合入后的代码 (带指向新位置的
    `path:line` 引用):
    - `architecture.md` —— 模块 / 边界 / 数据流变化。
@@ -67,7 +67,7 @@ command —— git / GitLab MR 负责合并。也没有 delta 树需要回流。
 
 > Provenance
 > - Authoritative paradigm: spec-kit "specs ship with the code" + citation fidelity — no delta tree, no separate merge command (GitLab MR handles merging); `specs/<NNN>-<slug>/` stays in place as the permanent record
-> - Investigation protocol: only run on merged work; diff the merged code against the 8 knowledge docs and refresh affected sections with new `path:line` anchors; run the reference validator so no dangling citation survives in knowledge or active specs
+> - Investigation protocol: only run on merged work; diff the merged code against the 7 knowledge docs and refresh affected sections with new `path:line` anchors; run the reference validator so no dangling citation survives in knowledge or active specs
 > - Output form: post-merge checklist (deployed · knowledge refreshed · validator clean · progress.md closed · specs left in place) + a closing row appended to `.agent/progress.md`
 
 ```markdown

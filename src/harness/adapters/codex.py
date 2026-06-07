@@ -18,7 +18,7 @@ from harness.core.scaffold import ScaffoldEngine
 # Codex uses the same /hx-<cmd> surface; descriptions kept terse.
 _SKILL_DESCRIPTIONS_EN: dict[str, str] = {
     "constitution": "Synthesize the project constitution",
-    "baseline": "Build the 8-doc knowledge base",
+    "baseline": "Build the 7-doc knowledge base",
     "next": "Route the next move (suggest flow + next command)",
     "propose": "Draft a change proposal under specs/<NNN>-<slug>/",
     "clarify": "Multi-round structured clarification",
@@ -35,7 +35,7 @@ _SKILL_DESCRIPTIONS_EN: dict[str, str] = {
 
 _SKILL_DESCRIPTIONS_ZH: dict[str, str] = {
     "constitution": "生成项目宪章",
-    "baseline": "构建 8 篇核心知识库文档",
+    "baseline": "构建 7 篇核心知识库文档",
     "next": "路由下一步动作 (推荐 flow 与下一个命令)",
     "propose": "在 specs/<NNN>-<slug>/ 起草变更提案",
     "clarify": "多轮结构化澄清",

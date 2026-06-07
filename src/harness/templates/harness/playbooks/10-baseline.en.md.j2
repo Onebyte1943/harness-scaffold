@@ -33,7 +33,7 @@ the investigation goes. **Default is `L2`.** Invoke as
 
 | Tier | Use when | Mandatory items beyond the previous tier |
 |------|----------|------------------------------------------|
-| `L1` survey | quick onboarding read; spike before deciding to invest | manifest scan · file inventory · top-level architecture sketch · all 8 doc skeletons present with Open Questions filled |
+| `L1` survey | quick onboarding read; spike before deciding to invest | manifest scan · file inventory · top-level architecture sketch · all 7 doc skeletons present with Open Questions filled |
 | `L2` standard (default) | normal baseline for an active project | `git churn` heatmap · dependency surface · existing sensors mapped (lint / type / test / hook) · canonical exemplar per convention · internal-framework section with owner · runtime view for the **single most critical flow** |
 | `L3` deep | high-stakes (security · regulatory · taking over an unfamiliar legacy) | AST/LSP module-graph extraction · public-API surface enumerated (OpenAPI / proto / type exports) · DB schema reverse-engineered · IaC inventory · incident history & bus-factor analysis · arc42 quality scenarios filled · all how-to recipes completed |
 
@@ -74,7 +74,7 @@ without a source are forbidden — park them in *Open Questions* instead.
    keep their `> Provenance` blocks intact; they tell the next
    contributor which authority shaped the doc and which protocol to
    follow.
-4. **Per-doc investigation.** For each of the 8 docs, run the protocol
+4. **Per-doc investigation.** For each of the 7 docs, run the protocol
    in *§ Per-doc investigation methodology* below. Iterate the doc until
    it meets its own Provenance contract. Every non-trivial claim cites
    `path:line` or a named non-code source.
@@ -195,7 +195,7 @@ Run the matching protocol per file. Tier requirements are cumulative.
 
 ## Outputs
 
-The 8 knowledge documents under `.harness/knowledge/`:
+The 7 knowledge documents under `.harness/knowledge/`:
 
 - `product.md` — Working Backwards: problem · users · value proposition · core
   capabilities · key journeys · success metrics · scope / non-goals.
@@ -233,7 +233,7 @@ Common to every depth tier:
 
 Tier-specific:
 
-- **L1**: all 8 doc skeletons exist with at least Problem / Users /
+- **L1**: all 7 doc skeletons exist with at least Problem / Users /
   Top-level architecture / Top dependencies / Install command filled.
 - **L2** (default): everything above **+** internal-framework section
   present in `tech-stack.md` with owner · runtime view for the most
@@ -300,7 +300,7 @@ pass.
 
 ## Appendix A — Knowledge base seed (T2)
 
-Use the following templates verbatim when bootstrapping the 8 files. All
+Use the following templates verbatim when bootstrapping the 7 files. All
 headings stay in English; body text follows the project language. Every
 seed carries a `> Provenance` block — keep it; it tells the next contributor
 which authority shaped the doc and which investigation protocol to follow.

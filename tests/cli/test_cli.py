@@ -237,7 +237,7 @@ class TestInit:
         assert not (tmp_path / ".harness" / "knowledge" / "adr").exists()
         # progress log not yet created
         assert not (tmp_path / ".agent" / "progress.md").exists()
-        # None of the 8 knowledge docs are seeded yet
+        # None of the 7 knowledge docs are seeded yet
         assert not (tmp_path / ".harness" / "knowledge" / "architecture.md").exists()
         # No legacy artifact tree
         assert not (tmp_path / "harness-artifacts").exists()

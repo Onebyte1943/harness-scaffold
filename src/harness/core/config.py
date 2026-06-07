@@ -18,7 +18,7 @@ CONFIG_FILE = "config.toml"
 
 @dataclass
 class HarnessConfig:
-    """Harness project configuration (design v2)."""
+    """Harness project configuration (design v3)."""
 
     project_root: Path
     profile: Literal["brownfield", "greenfield"] = "brownfield"

@@ -26,7 +26,7 @@ _SKILL_DESCRIPTIONS_EN: dict[str, str] = {
         "principle packs, and the team's de-facto patterns"
     ),
     "baseline": (
-        "Build the 8-doc knowledge base (product, architecture, tech-stack, "
+        "Build the 7-doc knowledge base (product, architecture, tech-stack, "
         "business, conventions, glossary, setup-and-verify, plus how-to/)"
     ),
     "next": (
@@ -74,7 +74,7 @@ _SKILL_DESCRIPTIONS_ZH: dict[str, str] = {
         "综合通用 SDD 原则、principle packs,以及团队从代码库沉淀的事实模式,生成项目宪章"
     ),
     "baseline": (
-        "构建 8 篇核心知识库文档 (product、architecture、tech-stack、business、"
+        "构建 7 篇核心知识库文档 (product、architecture、tech-stack、business、"
         "conventions、glossary、setup-and-verify,以及 how-to/)"
     ),
     "next": ("路由下一步动作:根据当前状态推荐 flow 等级与下一个 /hx-<cmd> —— 不写入任何文件"),
