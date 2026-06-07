@@ -1,3 +1,8 @@
 """Harness — Unified AI agent engineering scaffold for teams."""
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("harness")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
