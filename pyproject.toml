@@ -50,7 +50,7 @@ Changelog = "https://github.com/Onebyte1943/harness-scaffold/blob/main/CHANGELOG
 harness = "harness.cli:cli"
 
 [build-system]
-requires = ["uv_build>=0.11.18,<0.12.0"]
+requires = ["uv_build>=0.11.19,<0.12.0"]
 build-backend = "uv_build"
 
 # Distribution name is `harness-scaffold` (the bare `harness` PyPI name was
