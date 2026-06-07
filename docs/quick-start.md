@@ -4,23 +4,38 @@ Get harness running in your project in under 5 minutes.
 
 ## Installation
 
+The PyPI distribution name is **`harness-scaffold`** (the name `harness`
+was already taken on PyPI by an unrelated project). The import path and
+the CLI binary remain `harness`.
+
 ### With uv (recommended)
 
 ```bash
-uv tool install harness
+uv tool install harness-scaffold
 ```
 
 ### With pip
 
 ```bash
-pip install harness
+pip install harness-scaffold
+```
+
+### Directly from GitHub
+
+Use this if you want to track `main` or install before a PyPI release is
+cut:
+
+```bash
+pip install git+https://github.com/Onebyte1943/harness-scaffold.git
+# or
+uv tool install git+https://github.com/Onebyte1943/harness-scaffold.git
 ```
 
 ### From source (development)
 
 ```bash
-git clone https://github.com/your-org/harness.git
-cd harness
+git clone https://github.com/Onebyte1943/harness-scaffold.git
+cd harness-scaffold
 uv sync
 uv run harness --version
 ```

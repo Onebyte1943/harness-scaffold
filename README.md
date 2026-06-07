@@ -1,6 +1,6 @@
-# Harness
+# Harness Scaffold
 
-[![CI](https://github.com/Onebyte1943/harness/actions/workflows/ci.yml/badge.svg)](https://github.com/Onebyte1943/harness/actions/workflows/ci.yml)
+[![CI](https://github.com/Onebyte1943/harness-scaffold/actions/workflows/ci.yml/badge.svg)](https://github.com/Onebyte1943/harness-scaffold/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/downloads/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
@@ -43,10 +43,15 @@ Harness solves this with a **one brain, many frontends** architecture:
 ## Quick Start
 
 ```bash
-# Install
-pip install harness
+# Install (PyPI — distribution name is harness-scaffold; import + CLI stay `harness`)
+pip install harness-scaffold
 # or with uv
-uv tool install harness
+uv tool install harness-scaffold
+
+# Or install directly from GitHub (works before any PyPI release)
+pip install git+https://github.com/Onebyte1943/harness-scaffold.git
+# or
+uv tool install git+https://github.com/Onebyte1943/harness-scaffold.git
 
 # Initialize in your project
 cd your-project

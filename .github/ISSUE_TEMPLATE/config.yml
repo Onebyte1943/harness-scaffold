@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/Onebyte1943/harness/security/advisories/new
+    url: https://github.com/Onebyte1943/harness-scaffold/security/advisories/new
     about: Please report vulnerabilities privately, not via public issues.
   - name: Question or discussion
-    url: https://github.com/Onebyte1943/harness/discussions
+    url: https://github.com/Onebyte1943/harness-scaffold/discussions
     about: For open-ended questions, design feedback, or "how do I…" prefer Discussions.

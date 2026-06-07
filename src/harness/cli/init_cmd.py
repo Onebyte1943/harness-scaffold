@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -69,18 +70,18 @@ def _detect_lang(project_root: Path) -> str:
 
 
 def _is_interactive() -> bool:
-    try:
-        import sys
-
-        return sys.stdin.isatty()
-    except Exception:
-        return False
+    # Detached/redirected stdin (CI, pipes) has no isatty — fall back to non-interactive.
+    isatty = getattr(sys.stdin, "isatty", None)
+    return bool(isatty and isatty())
 
 
 def _prompt_agents() -> list[str]:
     try:
         import questionary
+    except ImportError:
+        return ["claude"]
 
+    try:
         result = questionary.checkbox(
             "Select AI agent terminals to support:",
             choices=[
@@ -91,9 +92,9 @@ def _prompt_agents() -> list[str]:
                 questionary.Choice("Gemini CLI (via registry, not bundled)", value="gemini"),
             ],
         ).ask()
-        return result if result else ["claude"]
-    except (ImportError, Exception):
+    except (KeyboardInterrupt, EOFError):
         return ["claude"]
+    return result if result else ["claude"]
 
 
 def _get_template_dir() -> Path:

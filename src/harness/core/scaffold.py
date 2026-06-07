@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
 from rich.console import Console
 
 console = Console()
@@ -105,9 +105,9 @@ class ScaffoldEngine:
         """Check if a template exists."""
         try:
             self._env.get_template(template_name)
-            return True
-        except Exception:
+        except TemplateNotFound:
             return False
+        return True
 
     def render_localized(
         self,

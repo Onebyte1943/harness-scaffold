@@ -15,7 +15,7 @@ release receives security fixes.
 **Please do not open a public GitHub issue for security reports.**
 
 Use GitHub's private vulnerability reporting:
-https://github.com/Onebyte1943/harness/security/advisories/new
+https://github.com/Onebyte1943/harness-scaffold/security/advisories/new
 
 Include:
 
