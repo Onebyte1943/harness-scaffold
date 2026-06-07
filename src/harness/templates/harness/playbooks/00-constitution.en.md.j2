@@ -1,0 +1,131 @@
+---
+name: hx-constitution
+phase: bootstrap
+flow: [quick, standard, full, epic]
+---
+# /hx-constitution
+
+## Purpose
+
+Synthesize the project's invariant principles from three sources, get
+human ratification, and lock them in. Every later `/hx-` command reads
+the result.
+
+## Prerequisites
+
+- Harness initialized (`.harness/config.toml` exists).
+- (Optional) `/hx-baseline` already produced `.harness/knowledge/` —
+  pattern-reverse-engineering becomes one of the three sources.
+
+## Inputs
+
+- Universal engineering principles (built into this playbook).
+- `.harness/principle-packs/*.md` — tech-stack-specific norm packs.
+- `.harness/knowledge/` — observed good patterns from `/hx-baseline`
+  (optional but recommended).
+
+## Steps
+
+1. **Bootstrap.** If `{{ constitution_path }}` does not exist, create
+   the file (including parent directory) with the seed in *Appendix A*.
+2. **Source 1 — universal**: import the universal principles in *Appendix A*.
+3. **Source 2 — principle packs**: read every `.md` under
+   `.harness/principle-packs/`. Map each principle to a `[enforceable]`
+   or `[inferential]` tag.
+4. **Source 3 — baseline patterns**: scan `.harness/knowledge/conventions.md`
+   and `architecture.md` for recurring good patterns; promote 1–3 to
+   principles.
+5. **Merge & deduplicate**: produce a draft principle list (5–9 entries).
+   Each principle has: Rule (imperative, verifiable), Why (what breaks
+   if violated), Compliance signal (how `/hx-analyze` and `/hx-review`
+   check it), `[enforceable: arch-test|lint | inferential]` tag.
+6. **Human ratification gate**: print the draft and stop. The human
+   edits, removes, or approves. Only after explicit approval is the
+   file overwritten with the final list.
+7. **Append revision log entry** at the bottom (date · summary · approver).
+
+## Outputs
+
+- `{{ constitution_path }}` — ratified principle list.
+- Agent acknowledgement that every principle is now an inviolable
+  constraint for this session.
+
+## Exit Criteria
+
+- File exists, frontmatter parses, every principle has all four fields.
+- No conflicting principles (or conflicts flagged for resolution).
+- Revision log has at least one entry.
+
+## Gate
+
+No other `/hx-` command may run in this session until the agent has
+acknowledged the principle list.
+
+---
+
+## Appendix A — Constitution seed (T1)
+
+> Provenance
+> - Authoritative paradigm: spec-kit verifiable constitution + paved road; three-source synthesis (universal principles + principle-packs + observed patterns)
+> - Investigation protocol: detect stack via manifest / framework markers → pull matching `.harness/principle-packs/*.md`; mine `git log` + `.harness/knowledge/conventions.md` for recurring patterns; cap at 9 principles; demote anything a tool can already enforce
+> - Output form: numbered principle cards (P1, P2, …) — each with **Rule** (imperative, verifiable) · **Why** (what breaks if violated) · **Compliance signal** (how `/hx-analyze` and `/hx-review` check it) · `[enforceable: arch-test|lint]` or `[inferential]` tag
+
+Use the following template verbatim when bootstrapping
+`{{ constitution_path }}`.
+
+```markdown
+# Constitution — {{ project_name }}
+
+> Non-negotiable principles. Read by every `/hx-` command.
+> Each principle MUST be verifiable and specific
+> (NOT "write good code"; YES "API responses MUST follow JSON:API").
+> Sources: universal engineering + principle-packs + observed good patterns.
+
+---
+
+## P1 Verification is mandatory   [enforceable: arch-test]
+- Rule: no change merges without `.harness/scripts/{{ script_shell }}/verify.sh` exiting 0.
+- Why (non-negotiable): the only objective signal that "it works" right now.
+- Compliance signal: GitLab CI MR pipeline blocks the MR.
+
+## P2 Evidence over assertion   [inferential]
+- Rule: any non-trivial claim about the code cites `path:line` or command output.
+- Why: agents and humans must be able to verify, not trust.
+- Compliance signal: `/hx-review` rejects uncited claims; `/hx-doctor` runs
+  the reference validator.
+
+## P3 Prefer reversible decisions   [inferential]
+- Rule: when trade-offs are close, choose the option easier to undo.
+- Why: irreversible lock-in is the most expensive class of mistake.
+- Compliance signal: `/hx-design` notes the reversibility of each DEC;
+  `/hx-review` flags lock-in.
+
+## P4 Tests verify behavior, not implementation   [inferential]
+- Rule: a test fails only when user-visible behavior or a contract changes.
+- Why: tests bound to internals decay fast and lock in bad designs.
+- Compliance signal: `/hx-review` checks; mutation tests catch the worst cases.
+
+## P5 Boundaries are explicit   [enforceable: arch-test]
+- Rule: cross-module dependencies are unidirectional and acyclic.
+- Why: blast radius must be predictable so agents can change one module
+  without breaking others.
+- Compliance signal: arch-test in `.harness/scripts/{{ script_shell }}/`.
+
+---
+
+## How to customize
+
+1. Add team-specific principles (e.g. "All public APIs MUST have OpenAPI specs").
+2. Remove principles that do not apply.
+3. Keep it SHORT — should fit on one screen. Detailed rules belong in
+   playbooks, knowledge docs, or design documents.
+4. Each principle MUST be verifiable. If you cannot describe how
+   `/hx-review` or `/hx-analyze` would check it, refine until you can.
+
+---
+
+## Revision log
+
+| Date | Change | Approver |
+| ---- | ------ | -------- |
+```

@@ -1,0 +1,58 @@
+# Principle Pack — Generic Engineering
+
+> 行业中立的最佳实践范式,作为 `/hx-constitution` 合成时的三个来源
+> 之一。每条原则用 `[enforceable: arch-test|lint]` 标记 —— 当存在
+> 确定性的护栏可以校验时;否则用 `[inferential]` 标记,由
+> `/hx-review` 兜底覆盖。
+>
+> 在本文件旁可追加技术栈专用包(如 `python.md`、`react.md`、
+> `spring.md`)。团队可自行扩展。
+
+> Provenance (T15)
+> - Authoritative paradigm: Google Engineering Practices + Alibaba Java Development Manual + Thoughtworks engineering values — industry-neutral baseline principles
+> - Investigation protocol: each principle is industry-neutral and tagged `[enforceable: arch-test|lint]` when a deterministic guardrail can check it; otherwise `[inferential]` so `/hx-review` covers it; domain-specific tightening lives in sibling packs (`python.md`, `spring.md`, `react.md`, …)
+> - Output form: compact numbered cards `P-G-N` — **Rule** (imperative) · **Why** (what breaks) · enforceability tag; consumed by `/hx-constitution` and merged with observed project patterns to synthesize the project constitution
+
+---
+
+## P-G-1 Tests verify behavior, not implementation details
+
+- Rule:测试仅当用户可见行为或契约变化时才失败。
+- Why:与内部实现耦合的测试腐化得最快,且会把糟糕的设计锁死。
+- [inferential]
+
+## P-G-2 No silent failures
+
+- Rule:每一条错误路径都必须被处理、记录,或带上下文重新抛出。
+- Why:静默失败会把故障变成谜案。
+- [enforceable: lint]
+
+## P-G-3 Pure functions for business rules
+
+- Rule:业务逻辑函数不做 I/O;I/O 放在系统边界。
+- Why:利于可测性、可推理性与复用。
+- [inferential]
+
+## P-G-4 Reversible decisions preferred
+
+- Rule:取舍接近时,优先选更容易撤销的那一个。
+- Why:不可逆的锁定是代价最高的一类错误。
+- [inferential]
+
+## P-G-5 Single source of truth for any fact
+
+- Rule:任一项目事实(版本号、阈值、契约)只在一个地方存在。
+- Why:重复必然漂移;漂移总在最糟的时刻爆雷。
+- [inferential]
+
+## P-G-6 Public APIs are documented at their definition site
+
+- Rule:对外导出的函数 / 类型 / 端点都带一段定义处的文档。
+- Why:调用方读不到实现,签名就是契约。
+- [enforceable: lint]
+
+## P-G-7 Logs carry structured context
+
+- Rule:每一行日志都带上 request_id(或等效的关联键)。
+- Why:事后复盘的速度受限于日志的可检索性。
+- [enforceable: lint]

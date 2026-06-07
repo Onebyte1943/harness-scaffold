@@ -1,0 +1,78 @@
+---
+name: hx-propose
+phase: change
+flow: [standard, full, epic]
+---
+# /hx-propose
+
+## Purpose
+
+将一份 requirement / tech-spec 转化为 **proposal** —— 为何重要、
+将构建什么、不在范围内是什么、影响半径、源引用。`specs/NNN-<slug>/`
+下的第一份文件。
+
+## Prerequisites
+
+- `/hx-constitution` 已完成。
+- (推荐) `/hx-baseline` 已完成,以便知识库可以为论断提供依据。
+
+## Inputs
+
+- 用户提供的 requirement / tech-spec 文档。
+- `.harness/knowledge/` —— 用于将变更锚定到当前架构。
+- `.harness/memory/constitution.md` —— 用于不可违反的约束。
+
+## Steps
+
+1. **选取下一个 NNN。** 扫描 `specs/`,找到最大的现有 `NNN-` 前缀
+   并自增。将变更名 slug 化 (kebab-case,≤ 30 字符)。
+2. **创建 spec 文件夹。** `mkdir -p specs/<NNN>-<slug>/`。
+3. **创建匹配分支。** `git checkout -b <NNN>-<slug>` (若已在该分支
+   则跳过)。分支和文件夹共享前缀,以便后续每个命令都能识别活动变更。
+4. **撰写 `specs/<NNN>-<slug>/proposal.md`**,使用 *Appendix A*。
+   每一节都必填;"Sources" 必须为每条非平凡论断列出 `path:line` 或
+   `doc§` 引用。
+5. **停在闸口。** 打印 proposal,在人工批准前不运行任何后续命令。
+
+## Outputs
+
+- `specs/<NNN>-<slug>/proposal.md` —— 单一 proposal 文件。
+
+## Exit Criteria
+
+- 范围清晰可审 (≤ 1 屏)。
+- 明确声明 Non-goals。
+- 每条论断都有来源。
+
+## Gate
+
+Proposal 必须经人工批准,`/hx-clarify`、`/hx-design` 或 `/hx-plan`
+才能运行。
+
+---
+
+## Appendix A — proposal.md template (T3)
+
+> Provenance
+> - Authoritative paradigm: OpenSpec proposal (no diff/delta — only direction)
+> - Investigation protocol: read the requirement / tech-spec doc + locate impact in `.harness/knowledge/architecture.md`; every non-trivial claim cites `path:line` or `doc§`; defer detail to `/hx-design`
+> - Output form: a one-screen proposal with five sections — Why · What · Non-goals · Impact · Sources; reviewable by a human in under two minutes
+
+```markdown
+# Proposal — ⟨title⟩   (id: NNN-⟨slug⟩, flow: standard|full|epic)
+
+## Why
+⟨motivation, user value, business reason⟩
+
+## What
+⟨scope in one paragraph⟩
+
+## Non-goals
+⟨what is explicitly out of scope⟩
+
+## Impact
+⟨capabilities / modules touched · blast radius · breaking changes⟩
+
+## Sources
+⟨requirement / tech-spec links · path:line citations⟩
+```

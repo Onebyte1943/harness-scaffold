@@ -1,0 +1,145 @@
+---
+name: hx-doctor
+phase: steer
+flow: [quick, standard, full, epic]
+---
+# /hx-doctor
+
+## Purpose
+
+Self-check for the harness itself. Catch drift, dead rules, budget
+overruns, eval regressions, and contradictions before they compound.
+Distinct from `/hx-analyze` (planning artifacts) and `/hx-review`
+(implementation vs plan) — `/hx-doctor` checks the harness mechanism
+and its self-consistency.
+
+## Prerequisites
+
+- Harness initialized (`.harness/` exists).
+
+## Inputs
+
+- Everything under `.harness/`.
+- `AGENTS.md`, `CLAUDE.md`, `.codex/commands/` (if present).
+- `specs/` recent changes (sample for design-doc scoring).
+- `.harness/evals/` regression samples.
+- Optional usage telemetry (which playbooks fired, which rules cited).
+
+## Steps
+
+### Sync & Consistency
+
+1. **Rule ↔ guardrail sync.** Every constitution principle should be
+   referenced by at least one playbook step, lint rule, arch-test, or
+   review check. Orphaned rules → suggest pruning. Guardrails without
+   a backing rule → suggest pruning.
+2. **Guides do not contradict.** Cross-scan AGENTS.md / constitution /
+   playbooks / knowledge for conflicting instructions.
+
+### Budgets
+
+3. **File-size budgets.**
+   - `AGENTS.md` < 32 KiB.
+   - `.harness/memory/constitution.md` ≤ one screen of principles.
+   - Knowledge docs not oversized (cohesion-first; flag if a single
+     doc explodes).
+
+### Design Quality (sampled)
+
+4. **Design-doc scoring** (§12.4 A). Sample recent `specs/*/design.md`,
+   score each dimension: groundedness, unambiguity, completeness, self-
+   containment, right-sized, modularity, traceability, consistency,
+   blockers cleared.
+
+### Hygiene
+
+5. **Dead rules / guardrails / playbook steps.** Identify items never
+   referenced in any traced run. Suggest pruning.
+6. **Drift indicators.** Compare `.harness/knowledge/architecture.md`
+   against real module graph. Compare constitution `[enforceable]`
+   clauses against lint / arch-test coverage.
+
+### Validation
+
+7. **Reference validator** — every `path:line` / symbol citation in
+   knowledge + active specs resolves.
+8. **Knowledge ↔ code drift** — anchors named in `architecture.md`,
+   `tech-stack.md`, and `conventions.md` still exist in the codebase.
+9. **Legacy layout warnings** — if `harness-artifacts/` or root
+   `memory/` exist, surface as a one-time migration warning (the layout
+   moved in design v2).
+
+### Eval Regression Gate
+
+10. **Run `.harness/evals/`** samples through a clean-context run.
+    Compare against baseline: first-try-pass rate, clarify-question
+    count, review must-fix count, rework volume. Any regression on a
+    `.harness/**` or `AGENTS.md` change → block.
+
+### Report
+
+11. Produce *Appendix A* with categorized findings:
+    - **CRITICAL** — broken references, budget exceeded, eval regression.
+    - **WARNING** — drift indicators, dead rules, contradictions.
+    - **INFO** — pruning candidates, design-score deltas.
+
+## Outputs
+
+- Doctor report with categorized findings and concrete remediation.
+
+## Exit Criteria
+
+- 0 broken references.
+- 0 budget overruns.
+- 0 eval regressions on harness changes.
+
+## Gate
+
+`/hx-doctor` does not block other commands. **But** any CRITICAL finding
+should be resolved before the next change cycle starts.
+
+---
+
+## Appendix A — doctor report template (T12)
+
+> Provenance
+> - Authoritative paradigm: Böckeler "evaluate harness coverage and quality" — distinct from `/hx-analyze` (planning artifacts) and `/hx-review` (impl vs plan); this one checks the harness mechanism's self-consistency, drift, and eval regression
+> - Investigation protocol: scan rule ↔ guardrail mapping (constitution principle ↔ playbook step / lint / arch-test / review check); validate every `path:line` and symbol citation across knowledge + active specs; diff `.harness/knowledge/architecture.md` anchors vs the live module graph; sample recent `specs/*/design.md` for §12.4 A scoring; replay `.harness/evals/` samples and compare to baseline (first-try-pass · clarify-questions · review must-fix · rework)
+> - Output form: tri-tier self-check report — **CRITICAL** (broken refs · budget exceeded · eval regression) · **WARNING** (drift · dead rules · contradictions) · **INFO** (prune candidates · design-score deltas) — with concrete remediation per finding
+
+```markdown
+# Harness self-check — ⟨date⟩
+
+## Rule ↔ guardrail sync
+⟨rules without guard / guards without rule⟩
+
+## Guide contradictions
+⟨…⟩
+
+## Budgets
+- AGENTS.md ⟨KB⟩ / 32 KB
+- constitution.md ⟨n principles⟩ / target ≤ 9
+- oversized files ⟨…⟩
+
+## Design doc score (sampled)
+⟨per-dimension pass rate⟩
+
+## Reference & drift
+- Dangling references: ⟨n⟩
+- Knowledge ↔ code drift: ⟨n⟩
+
+## Eval regression
+- first-try-pass: ⟨delta vs baseline⟩
+- clarify-questions: ⟨delta⟩
+- review must-fix: ⟨delta⟩
+- rework: ⟨delta⟩
+
+## Dead rules / guards / steps
+⟨never-fired → prune candidates⟩
+
+## Legacy layout
+⟨harness-artifacts/ or root memory/ detected → migration note⟩
+
+## Recommendations
+⟨tighten / simplify / adjust thresholds⟩
+```

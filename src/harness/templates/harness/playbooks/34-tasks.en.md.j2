@@ -1,0 +1,82 @@
+---
+name: hx-tasks
+phase: change
+flow: [standard, full, epic]
+---
+# /hx-tasks
+
+## Purpose
+
+Decompose the plan into **right-sized, self-contained, TDD-ordered tasks**
+grouped by user story, with file paths and parallelism flags.
+
+## Prerequisites
+
+- `specs/<NNN>-<slug>/plan.md` approved.
+- (Recommended) `design.md` for REQ-ID references.
+
+## Inputs
+
+- `specs/<NNN>-<slug>/plan.md`.
+- `specs/<NNN>-<slug>/design.md` (REQ-IDs for acceptance traceability).
+- `.harness/knowledge/architecture.md` — module sizing constraints.
+
+## Steps
+
+1. **Group by user story.** A user story is one observable outcome the
+   user gets.
+2. **Decompose** each story into the smallest **independently verifiable**
+   tasks. Right-sized = one focused session each.
+3. **Required fields per task**: ID, what to build, file path(s),
+   REQ-ID(s) for acceptance, dependencies.
+4. **Order TDD-style**: test task BEFORE the implementation task it
+   covers.
+5. **Mark `[P]`** on tasks that can run in parallel. Parallel ⇔ no
+   shared mutable state and decoupled modules (per §11).
+6. **Coverage check** — every REQ has at least one task; no dangling
+   plan item.
+7. **Cycle check** — no circular dependencies.
+8. **Write to `specs/<NNN>-<slug>/tasks.md`** using *Appendix A*.
+
+## Outputs
+
+- `specs/<NNN>-<slug>/tasks.md` — ordered, story-grouped task list.
+
+## Exit Criteria
+
+- Every task self-contained (an agent can pick one without reading the rest).
+- Every REQ covered.
+- Tests precede implementations.
+- No cycles.
+- `[P]` only on truly decoupled tasks.
+
+## Gate
+
+`/hx-implement` runs against this file. Re-run `/hx-tasks` if scope
+changes mid-flight.
+
+---
+
+## Appendix A — tasks.md template (T7)
+
+> Provenance
+> - Authoritative paradigm: spec-kit tasks (grouped by user story · `[P]` parallelism flag · file paths · TDD ordering)
+> - Investigation protocol: derive from `plan.md` + `design.md`; every REQ-NNN covered by at least one test task **before** an implementation task; `[P]` only when truly decoupled (no shared mutable state, no module overlap) per §11; cycle-check the dependency graph
+> - Output form: checkbox list grouped by user story (US-1, US-2, …); each task = ID + brief + file path(s) + REQ-ID + dependencies; tests precede implementations
+
+```markdown
+# Tasks — ⟨change⟩
+
+## User story US-1 ⟨name⟩
+- [ ] T1.1 [P] write test — covers REQ-001 — `tests/<area>/test_<unit>.py`
+- [ ] T1.2 implement — `src/<area>/<file>.py` — depends on T1.1
+- [ ] T1.3 e2e verify — exercise the real user path
+
+## User story US-2 ⟨name⟩
+- [ ] T2.1 [P] write test — covers REQ-002 — `tests/…`
+- [ ] T2.2 implement — `src/…` — depends on T2.1
+
+# Legend
+# [P] = parallelizable (no shared mutable state, decoupled module)
+# Each task: file path + REQ-ID + dependencies. Test-first.
+```

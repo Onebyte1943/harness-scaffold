@@ -1,0 +1,13 @@
+# /hx-{{ command }}
+
+{{ description }}。
+
+## Instructions
+
+执行 **{{ command }}** playbook,位置:`{{ playbook_path }}`。
+
+1. 从项目根目录读取 `{{ playbook_path }}`。
+2. 按顺序执行 playbook 中的每一步;尊重其 Gate。
+3. 遵守 `{{ constitution_path }}` 中所有 `[enforceable]` 条款,以及 `AGENTS.md` 声明的边界。
+4. 把产出写到 playbook 指定的位置 (spec 工件落在 `{{ specs_dir }}/`、知识落在 `{{ harness_dir }}/knowledge/`、进度落在 `{{ agent_dir }}/progress.md`)。
+5. 报告完成情况与所有阻塞项;不要静默跳过任何 Gate。

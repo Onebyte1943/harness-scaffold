@@ -1,0 +1,78 @@
+---
+name: hx-next
+phase: routing
+flow: [quick, standard, full, epic]
+---
+# /hx-next
+
+## Purpose
+
+路由器。审视当前变更的状态,分类其风险与规模,推荐下一个命令以及
+合适的 flow 级别。不产生任何文件输出 —— 仅给出一条建议。
+
+## Prerequisites
+
+- Harness 已初始化。
+- 可选:存在 `specs/NNN-<slug>/` 目录,对应一个进行中的变更。
+
+## Inputs
+
+- 当前活动分支名 (查找 `NNN-<slug>` 模式)。
+- `specs/NNN-<slug>/` 的内容 (存在哪些产物)。
+- `git diff --name-only main...HEAD` —— 变更文件数、受影响路径。
+- `.harness/config.toml` —— 项目默认 flow。
+- `.harness/memory/constitution.md` —— 涉及敏感路径 (安全、公共
+  API 表面) 的 `[enforceable]` 条款。
+
+## Steps
+
+1. **识别活动变更。** 若处于 `NNN-<slug>` 分支且存在匹配的
+   `specs/NNN-<slug>/`,则以该变更为准。否则按"无活动变更"处理。
+2. **信号采集**:
+   - `n_files = git diff --name-only main...HEAD | wc -l`
+   - `touches_public_api` —— 若变更触及声明的公共 API 表面则为 true。
+   - `touches_security` —— 若变更触及安全敏感路径 (auth、crypto、
+     payment、secrets) 则为 true。
+   - `req_size` —— 面向用户的需求数量 (来自 proposal / design,
+     若存在)。
+3. **建议 flow 级别**:
+   - `quick` —— n_files ≤ 3,无公共 API,无安全,无 constitution
+     `[enforceable]` 影响。
+   - `standard` —— 默认;n_files ≤ 20。
+   - `full` —— touches_public_api 或 touches_security 或 n_files > 20。
+   - `epic` —— req_size > 1 capability,或跨越多个 owner 存在冲突
+     的模块。
+4. **基于 `specs/NNN/` 中已有产物建议下一个命令**:
+   - 无 → `/hx-propose` (或 design-first 时为 `/hx-design`)。
+   - 仅有 proposal → 若有 ambiguity 标记则 `/hx-clarify`;否则
+     `/hx-design` (full+) 或 `/hx-plan` (standard)。
+   - 有 design 无 plan → `/hx-plan`。
+   - 有 plan 无 tasks → `/hx-tasks`。
+   - 有 tasks 但未全部完成 → `/hx-implement`。
+   - 全部 tasks 完成 → `/hx-verify`,然后 `/hx-review`,然后
+     `/hx-archive`。
+5. **打印** 建议,格式为:`flow = X · next = /hx-Y · reason = ⟨…⟩`。
+   列出驱动此选择的信号,以便人类可以推翻。
+
+## Outputs
+
+- 一条建议,打印到 agent / 终端。
+- **不写任何文件。** 该建议仅供参考。
+
+## Exit Criteria
+
+- 建议引用具体信号 (文件数、路径、enforceable 条款) —— 而非凭感觉。
+- 命名了清晰的下一个命令。
+
+## Gate
+
+无。这是一个路由辅助,不是闸口。
+
+---
+
+## Provenance (T-router)
+
+> Provenance
+> - Authoritative paradigm: cc-sdd discovery router + signal-driven flow tailoring (§5.3) — pick the cheapest flow level the signals justify
+> - Investigation protocol: read the active branch name for the `NNN-<slug>` pattern, enumerate which artifacts exist under `specs/NNN-<slug>/`, count `git diff --name-only main...HEAD`, detect touches on public API or security-sensitive paths, count user-facing requirements; map signals → flow level (`quick` / `standard` / `full` / `epic`) and → next command (proposal → clarify/design → plan → tasks → implement → verify → review → archive)
+> - Output form: a single advisory line `flow = X · next = /hx-Y · reason = ⟨signals⟩` printed to the terminal — no file is written, human may override

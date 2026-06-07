@@ -1,0 +1,121 @@
+---
+name: hx-design
+phase: change
+flow: [full, epic]
+---
+# /hx-design
+
+## Purpose
+
+产出一份 **AI 友好的详细设计** —— 自包含、有证据引用、带稳定 ID
+的文档,让一个干净上下文的 agent 读一遍就能实现,无需再次提问。
+
+## Prerequisites
+
+- `specs/<NNN>-<slug>/proposal.md` 存在 (或 design-first:一份 tech spec)。
+- `/hx-clarify` 已把 blocker 清零 (或本次运行会暴露新的 blocker)。
+
+## Inputs
+
+- proposal 以及任何 tech spec / 需求文档。
+- `.harness/knowledge/` —— 用于 grounding (架构、约定、技术栈)。
+- `.harness/memory/constitution.md` —— `[enforceable]` 条款成为硬约束。
+- `specs/<NNN>-<slug>/clarify.md` —— 已解决的决议,需要折回到设计中。
+
+## Steps
+
+1. **吸收并 grounding。** 逐条走查每一项需求,为每个非平凡论断标注
+   `path:line` 或 `doc§` 证据。
+2. **撰写 `specs/<NNN>-<slug>/design.md`**,使用 *Appendix A* 的 T5 模板。
+   尊重 10 项属性:
+   - 自包含 · 无歧义且可测 (Given/When/Then) · right-sized 并采用渐进式
+     披露 (每个 capability 约 250 行) · 显式契约 (signatures / OpenAPI /
+     data model / error edges 以代码块呈现) · 可追溯 (REQ ↔ design ↔
+     test,稳定 ID) · 结构机器可解析 · 聚焦"build what / how" · 显式
+     假设 · 有出处 (每条论断要么引用要么明确标为 assumption) · 可控的
+     blast radius。
+3. **稳定 ID**:`REQ-NNN` · `NFR-NNN` · `IF-NNN` · `DEC-NNN` · `RISK-NNN` · `Q-NNN`。
+4. **模块与 blast radius。** 套用 §11 规则:cohesion-first sizing、
+   稳定的窄契约、无环依赖。运行 size self-check。
+5. **暴露未决条目** → 触发 `/hx-clarify`,而不是去猜。
+6. **自评分** 对照 §12.4 A checklist;迭代到通过为止。
+
+## Outputs
+
+- `specs/<NNN>-<slug>/design.md`。
+- `specs/<NNN>-<slug>/contracts/` (可选) —— OpenAPI / schemas / data models。
+
+## Exit Criteria
+
+- 结构评分 (§12.4 A) 通过。
+- `clarify.md` 中 `blocker` 条目为 0。
+- 每个 REQ 都有 Given/When/Then 验收。
+- 每个 IF 都有代码块形式的契约。
+- 末尾的 traceability matrix 完整。
+
+## Gate
+
+干净上下文的 agent MUST 能够读完本设计就直接实现,**无需再提问**。
+若做不到,重跑 `/hx-clarify`。
+
+---
+
+## Appendix A — design.md template (T5)
+
+> Provenance
+> - Authoritative paradigm: SCOPE (Spec-driven · Contract-first · Observable · Progressive · Evidence-cited) + Agent-Experience design (Addy Osmani) + BDD / Gherkin
+> - Investigation protocol: ground every claim against code / knowledge / constraints with `path:line` or `doc§`; stable IDs `REQ-NNN / NFR-NNN / IF-NNN / DEC-NNN / RISK-NNN / Q-NNN` for cross-artifact traceability; unresolved items go back to `/hx-clarify` (do not guess)
+> - Output form: self-contained document a clean-context agent can implement without further questions — contracts as code blocks, REQs as Given/When/Then, traceability matrix at the end
+
+```markdown
+# Detailed Design — ⟨capability / change⟩
+> id: ⟨NNN-slug⟩ · owner: ⟨…⟩ · status: draft|review|approved
+> flow: ⟨standard|full|epic⟩ · sources: ⟨doc§ / path:line⟩
+
+## 1 Purpose & Scope · Non-goals
+⟨…⟩
+
+## 2 Context & Grounding
+⟨related code / knowledge / constraints, each with path:line or doc§⟩
+
+## 3 Functional Requirements
+### REQ-001 ⟨name⟩
+Given ⟨context⟩
+When ⟨action⟩
+Then ⟨observable outcome⟩
+Example test: ⟨one concrete test case⟩
+
+## 4 Non-functional Requirements
+NFR-001 ⟨measurable: latency / throughput / availability / security⟩
+
+## 5 Modules & Boundaries
+- Module ⟨A⟩ — responsibility — stable contract — dependency direction
+- Blast radius: ⟨files / public symbols this change can touch⟩
+- Size self-check: ⟨LOC / public-API symbol counts vs project thresholds⟩
+
+## 6 Interfaces & Data Contracts
+### IF-001 ⟨name⟩
+```code
+⟨signature / OpenAPI / data model / error edges⟩
+```
+
+## 7 Design Decisions
+- DEC-001 → ADR `.harness/knowledge/adr/NNNN-⟨slug⟩.md`
+  - Chosen: ⟨…⟩
+  - Rejected: ⟨option + why⟩
+
+## 8 Test Strategy
+- Sample test cases (REQ → test name / file).
+- Definition of done: ⟨observable user-visible behavior⟩.
+
+## 9 Task Seeds
+⟨high-level decomposition, right-sized → /hx-tasks⟩
+
+## 10 Assumptions
+⟨explicit, flagged; unconfirmed assumptions become RISK-NNN⟩
+
+## 11 Traceability
+| REQ | Design element | Test | Source |
+| --- | -------------- | ---- | ------ |
+| REQ-001 | §5 / §6 IF-001 | tests/… | path:line / doc§ |
+```

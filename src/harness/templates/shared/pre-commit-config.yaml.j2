@@ -1,0 +1,13 @@
+# Single source of truth: every hook calls
+# .harness/scripts/{{ script_shell }}/verify.sh — same script as pre-commit
+# and CI. Keep this file minimal; rules live in verify.sh.
+
+repos:
+  - repo: local
+    hooks:
+      - id: harness-verify-fast
+        name: harness verify --fast (lint + typecheck)
+        entry: .harness/scripts/{{ script_shell }}/verify.sh --fast
+        language: system
+        pass_filenames: false
+        stages: [commit]

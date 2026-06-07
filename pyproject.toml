@@ -1,0 +1,56 @@
+[project]
+name = "harness"
+version = "0.1.0"
+description = "Unified AI agent engineering scaffold for teams"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Onebyte", email = "Onebyte1943@users.noreply.github.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.1",
+    "jinja2>=3.1",
+    "rich>=13.0",
+    "questionary>=2.0",
+    "tomli>=2.0; python_version < '3.11'",
+]
+
+[project.scripts]
+harness = "harness.cli:cli"
+
+[build-system]
+requires = ["uv_build>=0.11.18,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+# `tomli` is only installed on Python < 3.11 (3.11+ uses stdlib tomllib),
+# so its stubs aren't resolvable on the dev interpreter — silence the
+# missing-import error for that one module.
+[[tool.mypy.overrides]]
+module = "tomli"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v --tb=short"

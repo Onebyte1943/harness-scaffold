@@ -1,0 +1,125 @@
+---
+name: hx-constitution
+phase: bootstrap
+flow: [quick, standard, full, epic]
+---
+# /hx-constitution
+
+## Purpose
+
+从三个来源综合出项目的不变量原则,经人工批准后锁定。后续每个
+`/hx-` 命令都会读取该结果。
+
+## Prerequisites
+
+- Harness 已初始化 (`.harness/config.toml` 存在)。
+- (可选) `/hx-baseline` 已经产出 `.harness/knowledge/` —— 模式逆向
+  工程将成为三个来源之一。
+
+## Inputs
+
+- 通用工程原则 (内置于本 playbook)。
+- `.harness/principle-packs/*.md` —— 特定技术栈的规范包。
+- `.harness/knowledge/` —— 来自 `/hx-baseline` 的观察到的良好模式
+  (可选但推荐)。
+
+## Steps
+
+1. **引导。** 如果 `{{ constitution_path }}` 不存在,使用 *Appendix A*
+   中的种子创建该文件 (包含父目录)。
+2. **来源 1 —— 通用**:导入 *Appendix A* 中的通用原则。
+3. **来源 2 —— 规范包**:读取 `.harness/principle-packs/` 下的每个
+   `.md`。将每条原则映射到 `[enforceable]` 或 `[inferential]` 标签。
+4. **来源 3 —— 基线模式**:扫描 `.harness/knowledge/conventions.md`
+   和 `architecture.md`,从中找出反复出现的良好模式;提炼 1–3 条为
+   原则。
+5. **合并与去重**:产出一份草稿原则列表 (5–9 条)。每条原则包含:
+   Rule (祈使、可验证)、Why (违反将破坏什么)、Compliance signal
+   (`/hx-analyze` 与 `/hx-review` 如何检查)、`[enforceable: arch-test|lint | inferential]`
+   标签。
+6. **人工批准闸口**:打印草稿并停止。人类进行编辑、删除或批准。
+   只有在明确批准后,才能用最终列表覆盖文件。
+7. **追加修订日志条目** 于文件底部 (日期 · 摘要 · 批准人)。
+
+## Outputs
+
+- `{{ constitution_path }}` —— 已批准的原则列表。
+- Agent 确认每条原则都已成为本会话的不可违反约束。
+
+## Exit Criteria
+
+- 文件存在,frontmatter 可解析,每条原则四个字段齐全。
+- 没有冲突的原则 (或冲突已被标记待解决)。
+- 修订日志至少有一条记录。
+
+## Gate
+
+在 agent 确认原则列表之前,本会话内不得运行任何其他 `/hx-` 命令。
+
+---
+
+## Appendix A — Constitution seed (T1)
+
+> Provenance
+> - Authoritative paradigm: spec-kit verifiable constitution + paved road; three-source synthesis (universal principles + principle-packs + observed patterns)
+> - Investigation protocol: detect stack via manifest / framework markers → pull matching `.harness/principle-packs/*.md`; mine `git log` + `.harness/knowledge/conventions.md` for recurring patterns; cap at 9 principles; demote anything a tool can already enforce
+> - Output form: numbered principle cards (P1, P2, …) — each with **Rule** (imperative, verifiable) · **Why** (what breaks if violated) · **Compliance signal** (how `/hx-analyze` and `/hx-review` check it) · `[enforceable: arch-test|lint]` or `[inferential]` tag
+
+引导 `{{ constitution_path }}` 时,逐字使用以下模板。
+
+```markdown
+# Constitution — {{ project_name }}
+
+> Non-negotiable principles. Read by every `/hx-` command.
+> Each principle MUST be verifiable and specific
+> (NOT "write good code"; YES "API responses MUST follow JSON:API").
+> Sources: universal engineering + principle-packs + observed good patterns.
+
+---
+
+## P1 Verification is mandatory   [enforceable: arch-test]
+- Rule: no change merges without `.harness/scripts/{{ script_shell }}/verify.sh` exiting 0.
+- Why (non-negotiable): the only objective signal that "it works" right now.
+- Compliance signal: GitLab CI MR pipeline blocks the MR.
+
+## P2 Evidence over assertion   [inferential]
+- Rule: any non-trivial claim about the code cites `path:line` or command output.
+- Why: agents and humans must be able to verify, not trust.
+- Compliance signal: `/hx-review` rejects uncited claims; `/hx-doctor` runs
+  the reference validator.
+
+## P3 Prefer reversible decisions   [inferential]
+- Rule: when trade-offs are close, choose the option easier to undo.
+- Why: irreversible lock-in is the most expensive class of mistake.
+- Compliance signal: `/hx-design` notes the reversibility of each DEC;
+  `/hx-review` flags lock-in.
+
+## P4 Tests verify behavior, not implementation   [inferential]
+- Rule: a test fails only when user-visible behavior or a contract changes.
+- Why: tests bound to internals decay fast and lock in bad designs.
+- Compliance signal: `/hx-review` checks; mutation tests catch the worst cases.
+
+## P5 Boundaries are explicit   [enforceable: arch-test]
+- Rule: cross-module dependencies are unidirectional and acyclic.
+- Why: blast radius must be predictable so agents can change one module
+  without breaking others.
+- Compliance signal: arch-test in `.harness/scripts/{{ script_shell }}/`.
+
+---
+
+## How to customize
+
+1. Add team-specific principles (e.g. "All public APIs MUST have OpenAPI specs").
+2. Remove principles that do not apply.
+3. Keep it SHORT — should fit on one screen. Detailed rules belong in
+   playbooks, knowledge docs, or design documents.
+4. Each principle MUST be verifiable. If you cannot describe how
+   `/hx-review` or `/hx-analyze` would check it, refine until you can.
+
+---
+
+## Revision log
+
+| Date | Change | Approver |
+| ---- | ------ | -------- |
+```

@@ -1,0 +1,127 @@
+---
+name: hx-plan
+phase: change
+flow: [standard, full, epic]
+---
+# /hx-plan
+
+## Purpose
+
+把 proposal / design 翻译成 **可执行的 plan**,以及为每个有分量、
+难以回退的决定产出形式化的 **ADR**。
+
+## Prerequisites
+
+- `specs/<NNN>-<slug>/proposal.md` 存在。
+- 对于 `full`+ 流程:`design.md` 存在并已审批。
+
+## Inputs
+
+- `specs/<NNN>-<slug>/proposal.md` 以及 (若存在) `design.md`。
+- `.harness/knowledge/` —— 当前架构与技术栈。
+- `.harness/memory/constitution.md` —— `[enforceable]` 条款是硬约束。
+- `.harness/knowledge/adr/` —— 已有 ADR (未走 supersede 流程,
+  MUST NOT 与之矛盾)。
+
+## Steps
+
+1. **选择技术路径。** 列出候选方案、权衡取舍、做出选择。把被否决
+   的方案显式记录 —— 它们是一等内容。
+2. **映射模块变更点。** 对每个被触及的模块,列出变更性质与依赖
+   方向。
+3. **规划 migration / rollback / canary**,覆盖任何有风险的迁移
+   (schema、public API、runtime)。明确写出 rollback 触发条件与流程。
+4. **罗列 risks 和 trade-offs。** 每个 risk 分配 `RISK-NNN`,标注
+   severity、mitigation、owner。
+5. **识别值得写 ADR 的决定。** 重大 trade-off、反默认选择、
+   不可逆成本、跨模块影响 —— 都算。
+6. **为每个 ADR**:分配下一个顺序号 `NNNN`,在
+   `.harness/knowledge/adr/NNNN-<slug>.md` 下使用 *Appendix B*
+   (MADR / Nygard schema) 撰写。被否决的方案是强制内容。
+7. **撰写 `specs/<NNN>-<slug>/plan.md`**,使用 *Appendix A*。Plan
+   MUST 引用每个 ADR 的 ID。
+8. **覆盖性检查** —— 设计中的每个元素都对应一个 plan 条目。
+
+## Outputs
+
+- `specs/<NNN>-<slug>/plan.md`。
+- 一个或多个 `.harness/knowledge/adr/NNNN-<slug>.md`。
+
+## Exit Criteria
+
+- Plan 覆盖每一个设计元素。
+- 每个有分量的决定都有 ADR。
+- 风险步骤有 migration / rollback 指定。
+- Plan 已审批 (人工或通过 `/hx-analyze`)。
+
+## Gate
+
+在 plan 被审批、且每个被标记的决定都有对应 ADR 之前,
+`/hx-tasks` MUST NOT 运行。
+
+---
+
+## Appendix A — plan.md template (T6)
+
+> Provenance
+> - Authoritative paradigm: spec-kit plan + MADR-style decision records
+> - Investigation protocol: read design + `.harness/knowledge/` to choose the technical path; every significant or hard-to-reverse decision spawns an ADR; migration / rollback / canary mandatory for risky transitions (schema · public API · runtime)
+> - Output form: plan sections — Technical path · Module change points · Migration / rollback · Risks (RISK-NNN with severity + mitigation + owner) · Decisions (each linked to an `adr/NNNN-*.md`)
+
+```markdown
+# Implementation Plan — ⟨change⟩
+
+## Technical path / choices
+⟨approach; key decisions → ADR references⟩
+
+## Module change points
+⟨files / modules + nature of change⟩
+
+## Migration / rollback
+⟨data migration · compatibility · canary · rollback trigger and procedure⟩
+
+## Risks & trade-offs
+- RISK-001 ⟨…⟩ — severity ⟨low|med|high⟩ — mitigation ⟨…⟩ — owner ⟨…⟩
+
+## Decisions
+- DEC-001 → `.harness/knowledge/adr/NNNN-⟨slug⟩.md`
+```
+
+## Appendix B — ADR template (T8, MADR / Nygard)
+
+> Provenance
+> - Authoritative paradigm: Nygard ADR + MADR — **rejected alternatives are first-class content**, not an afterthought
+> - Investigation protocol: capture the decision *at the time it is made*; document context · drivers · considered options · chosen option with reasoning · cross-link to the design `DEC-NNN` and plan `RISK-NNN` this ADR answers
+> - Output form: standard ADR sections (Context · Decision Drivers · Considered Options · Decision Outcome · Consequences · Rejected Alternatives) + YAML frontmatter (`status` / `date` / `deciders` / `consulted` / `informed`)
+
+```markdown
+---
+status: proposed | accepted | superseded
+date: ⟨YYYY-MM-DD⟩
+deciders: ⟨…⟩
+consulted: ⟨…⟩
+informed: ⟨…⟩
+---
+# NNNN. Use ⟨X⟩ for ⟨Y⟩
+
+## Context and Problem Statement
+⟨situation / problem / tension⟩
+
+## Decision Drivers (optional)
+⟨criteria any option must meet⟩
+
+## Considered Options
+- ⟨option A⟩
+- ⟨option B⟩
+
+## Decision Outcome
+Chose ⟨option A⟩ because ⟨…⟩.
+
+## Consequences
+- Positive: ⟨…⟩
+- Negative: ⟨…⟩
+- Follow-ups: ⟨…⟩
+
+## Rejected Alternatives
+- ⟨option B⟩ — rejected because ⟨…⟩
+```

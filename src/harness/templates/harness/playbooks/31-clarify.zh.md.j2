@@ -1,0 +1,75 @@
+---
+name: hx-clarify
+phase: change
+flow: [standard, full, epic]
+---
+# /hx-clarify
+
+## Purpose
+
+解决每一个会阻塞实现的歧义。独立且 **可重复运行** —— 可以在
+`/hx-propose` 之后、`/hx-design` 之后、或多轮迭代之间运行,直到没有
+blocker 为止。
+
+## Prerequisites
+
+- 活动变更文件夹存在于 `specs/<NNN>-<slug>/`。
+- `proposal.md` 或 `design.md` 至少存在一个。
+
+## Inputs
+
+- `specs/<NNN>-<slug>/proposal.md` (若存在)。
+- `specs/<NNN>-<slug>/design.md` (若存在)。
+- `.harness/knowledge/` —— 作为事实基准。
+- `.harness/memory/constitution.md` —— 作为规则。
+
+## Steps
+
+1. **扫描** proposal/design,寻找歧义、冲突、缺失细节、隐含假设。
+2. **生成澄清条目。** 每条包含:open question、为何阻塞、options、
+   suggested default、source 引用、severity (`blocker | assumption`)。
+3. **追加到 `clarify.md`**,使用 *Appendix A*。绝不覆盖 —— 每一轮
+   追加一个新块,以保留提问历史。
+4. **等待人类。** 由人类在表格中内联标记 resolution
+   (who · date · decision)。
+5. **循环。** 若出现新的歧义,重新运行本命令。将 "assumption" 项
+   下沉到 `design.md` 的 Assumptions 章节。
+
+## Outputs
+
+- `specs/<NNN>-<slug>/clarify.md` —— 累积的 Q&A 日志。
+
+## Exit Criteria
+
+- 不再有未解决的 `blocker` 严重度条目。
+- 每一行 resolution 都有 decider 和 date。
+
+## Gate
+
+只要还有任何 `blocker` 处于打开状态,`/hx-implement` MUST NOT 运行。
+
+---
+
+## Appendix A — clarify.md template (T4)
+
+> Provenance
+> - Authoritative paradigm: spec-kit clarify (independent, repeatable across rounds)
+> - Investigation protocol: scan proposal / design for ambiguity, conflict, missing detail, implicit assumption; for each item record `source` citation and `severity` (`blocker` vs `assumption`); never overwrite — append a new dated round
+> - Output form: cumulative Q&A table per round (Q-ID · open point · why blocking · options · suggested default · source · severity · resolution who/date/decision); `blocker` count must reach zero before `/hx-implement`
+
+```markdown
+# Clarifications — ⟨id⟩
+
+> Append each round. Newest last. Blockers MUST reach zero before /hx-implement.
+
+## Round 1 — ⟨YYYY-MM-DD⟩
+
+| Q-ID | Open point | Why blocking | Options | Suggested default | Source | Severity | Resolution(who/date/decision) |
+| ---- | ---------- | ------------ | ------- | ----------------- | ------ | -------- | ----------------------------- |
+| Q001 | ⟨…⟩ | ⟨…⟩ | A / B | A | doc§ / path:line | blocker | ⟨…⟩ |
+| Q002 | ⟨…⟩ | ⟨…⟩ | … | … | … | assumption | ⟨…⟩ |
+
+## Round 2 — ⟨YYYY-MM-DD⟩
+
+| Q-ID | … | … | … | … | … | … | … |
+```

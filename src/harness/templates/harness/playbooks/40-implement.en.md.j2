@@ -1,0 +1,137 @@
+---
+name: hx-implement
+phase: change
+flow: [quick, standard, full, epic]
+---
+# /hx-implement
+
+## Purpose
+
+Execute the tasks in `specs/<NNN>-<slug>/tasks.md` one at a time, with
+TDD-first ordering and end-to-end self-verification. Each task is fully
+working (red → green → refactor → verify) before the next begins. If
+implementation reveals a flaw upstream (spec, design, plan), flow back
+to the right command rather than patching forward.
+
+## Prerequisites
+
+- `quick` flow: `proposal.md` (and optional `clarify.md`) exist.
+- `standard`+: `tasks.md` exists; for `full`+ `analyze.md` had no
+  unresolved CONFLICT/GAP.
+- `.harness/memory/constitution.md` loaded.
+- `.harness/scripts/{{ script_shell }}/verify.sh` is functional.
+
+## Inputs
+
+- `specs/<NNN>-<slug>/tasks.md` — ordered task breakdown.
+- `specs/<NNN>-<slug>/design.md` — interfaces, REQ-NNN IDs, traceability.
+- `specs/<NNN>-<slug>/plan.md` — sequencing and decisions.
+- `AGENTS.md` — boundaries (Always / Ask / Never).
+- `.harness/memory/constitution.md` — `[enforceable]` clauses are gates.
+- `.agent/progress.md` — cross-session progress log (created on first run).
+
+## Steps
+
+1. **Bootstrap progress log on first run.** If `.agent/progress.md` does
+   not exist, create it (with parent dir) using the seed in
+   *Appendix A — Progress log seed*.
+2. **Orient.** Run `pwd`; read `.agent/progress.md` and recent `git log`;
+   open `tasks.md` and pick the next uncompleted task. Resolve any
+   `[P]` parallel marker on a per-task basis (only safe when files /
+   modules don't overlap).
+3. **Implement one task.** TDD ordering: write the failing test first
+   when the task is behavioral; then make it pass; then refactor.
+   Respect `AGENTS.md` and constitution `[enforceable]` clauses.
+4. **End-to-end verify.** Exercise the feature through its real entry
+   point — not unit tests alone. Then run
+   `.harness/scripts/{{ script_shell }}/verify.sh` (full mode, via
+   `/hx-verify`). Only mark the task done when verify is genuinely green.
+5. **Commit.** Descriptive message (what + why, link REQ-NNN where
+   relevant). Append a row to `.agent/progress.md` with date, command,
+   flow, summary, gate.
+6. **Never delete or weaken tests** to make verify pass. If tests fail,
+   fix the implementation. The only exception is an intentional behavior
+   change called out by a task (and that case must update the test
+   deliberately, not silently).
+
+### Rollback / circuit-breaker (§14.6)
+
+7. **Upstream-flaw rollback.** If implementation reveals that the
+   design, plan, or proposal is wrong (impossible interface, missing
+   requirement, contradiction), STOP coding. Flow back to the right
+   command:
+   - missing or ambiguous requirement → `/hx-clarify`,
+   - wrong interface / data model / decision → `/hx-design`,
+   - sequencing wrong / blocked → `/hx-plan`,
+   - task list incomplete or mis-ordered → `/hx-tasks`.
+   Record the rollback as a row in `.agent/progress.md` and as a note in
+   the affected artifact. **Do not** patch around a broken spec inside
+   the implementation.
+8. **Verify-failure circuit-breaker.** If `/hx-verify` fails ≥ 3
+   consecutive times on the same task with no progress on the actual
+   error signature, HALT. Don't burn budget on speculative retries.
+   Write a short diagnostic to `.agent/progress.md` (what failed, what
+   you tried, current hypothesis) and request human input — by an
+   explicit clarify pass or by surfacing the blocker in the playbook
+   output. The goal is to avoid the cycle "tweak → verify → tweak →
+   verify" without root-cause understanding.
+
+## Outputs
+
+- Source code changes committed to the working branch.
+- Updated `.agent/progress.md` — one row per completed task or rollback.
+
+## Exit Criteria
+
+- The current task is fully implemented and end-to-end verified.
+- `/hx-verify` is green (lint + typecheck + tests + honesty).
+- A commit exists with a descriptive message.
+- `.agent/progress.md` reflects the new state.
+- No existing tests were deleted or weakened.
+
+## Gate
+
+A task MUST NOT be marked complete without a green `/hx-verify` on a
+clean working tree. `/hx-review` MUST NOT run until every task in
+`tasks.md` is either complete or explicitly deferred with a recorded
+rationale.
+
+---
+
+## Appendix A — Progress log seed (T9)
+
+> Provenance
+> - Authoritative paradigm: Anthropic cross-session progress + end-to-end self-verify + upstream-flaw rollback / verify-failure circuit-breaker (§14.6)
+> - Investigation protocol: append a row per `/hx-*` invocation or rollback (date · command · flow · spec · summary · gate); never mutate prior rows — the log is the cross-session memory and audit trail
+> - Output form: append-only timeline table with state-transition rows (task complete · rollback · circuit-breaker halt) — the file a clean-context agent reads first to orient
+
+Use the following template verbatim when bootstrapping
+`.agent/progress.md`.
+
+```markdown
+# Progress Log — {{ project_name }}
+
+> Cross-session record of completed phases, rollbacks, and state
+> transitions. Append-only.
+
+---
+
+## How to Use
+
+After completing any `/hx-*` command (or on a rollback), append a row
+below with:
+
+- **Date** — when the entry was made.
+- **Command** — which `/hx-*` ran (or `rollback → /hx-clarify` etc.).
+- **Flow** — `quick` / `standard` / `full` / `epic`.
+- **Spec** — `specs/<NNN>-<slug>/` if applicable.
+- **Summary** — one line: what happened.
+- **Gate** — `pass` / `fail` / `n/a`.
+
+---
+
+## Log
+
+| Date | Command | Flow | Spec | Summary | Gate |
+| ---- | ------- | ---- | ---- | ------- | ---- |
+```

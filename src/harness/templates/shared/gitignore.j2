@@ -1,0 +1,28 @@
+# harness — managed block (do not remove this comment)
+
+# Editor / OS noise inside harness dirs
+.harness/.DS_Store
+.harness/**/.DS_Store
+.agent/.DS_Store
+
+# Script build artifacts
+.harness/scripts/**/__pycache__/
+.harness/scripts/**/*.pyc
+
+# Generated reports (L-GEN) — re-runnable, do not commit by default.
+# Uncomment if your team prefers committing them as audit trail.
+# .harness/evals/.reports/
+
+# Do NOT ignore these — they are part of the project record:
+#   .harness/playbooks/                  (mechanism)
+#   .harness/config.toml                 (configuration)
+#   .harness/registry.toml               (adapter registry)
+#   .harness/memory/constitution.md      (L-RULE)
+#   .harness/knowledge/                  (L-RULE: project knowledge base)
+#   .harness/principle-packs/            (tech norm packs)
+#   .harness/templates/                  (delivery templates)
+#   specs/                               (per-change SoT)
+#   .agent/progress.md                   (cross-session log)
+#   AGENTS.md / CLAUDE.md                (agent contracts)
+#   .gitlab-ci.yml                       (MR pipeline + scheduled drift)
+#   .pre-commit-config.yaml              (fast verify on commit)

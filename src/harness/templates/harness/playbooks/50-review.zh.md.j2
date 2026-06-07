@@ -1,0 +1,115 @@
+---
+name: hx-review
+phase: review
+flow: [quick, standard, full, epic]
+---
+# /hx-review
+
+## Purpose
+
+推断式传感器,承担 **两件事**:
+- **A. 正确性 & 一致性** —— 实现是否与 proposal / clarify / design /
+  constitution 对齐?
+- **B. Code Review** —— Google 的 "What to look for" 维度,加上适用的
+  Alibaba Java Development Manual。标准:**code health only goes up**。
+
+## Prerequisites
+
+- 干净工作树上 `/hx-verify` 已通过。
+- `specs/<NNN>-<slug>/` 产物已就位 (至少 proposal;`full`+ 还需 design)。
+
+## Inputs
+
+- 代码 diff (`git diff main...HEAD`)。
+- `specs/<NNN>-<slug>/{proposal,clarify,design,tasks}.md`。
+- `.harness/memory/constitution.md` —— `[enforceable]` 条款是 must-fix
+  闸口。
+- `.harness/knowledge/conventions.md` —— 命名 / 风格 / 模式。
+- `AGENTS.md` —— 边界 (Always / Ask / Never)。
+
+## Steps
+
+### A. Correctness & Consistency
+
+1. **覆盖** —— 每一个 REQ-NNN 都已实现并有真实的测试。缺失或被 stub
+   → **must-fix gap**。
+2. **设计对齐** —— 实现与 `design.md` 一致 (interfaces / data models /
+   behavior)。漂移 → must-fix 或显式偏差说明。
+3. **Constitution** —— 没有任何 `[enforceable]` 条款被违反。违反 →
+   must-fix。
+4. **边界** —— AGENTS.md 中的 "Never" 没有被越过。越界 → must-fix。
+5. **范围** —— 没有 proposal 之外的工作。意外新增内容需要批准或移除。
+
+### B. Code Review (Google dims + Alibaba spec)
+
+6. **Design** —— 抽象选得对、与系统契合。*最重要*。
+7. **Functionality** —— 做的就是声称要做的;边界情况已处理。
+8. **Complexity** —— 防止过早抽象与投机式通用化。
+9. **Tests** —— 验证行为,而不是实现细节。本次 MR 是否弱化或删除了
+   测试? → must-fix。
+10. **Naming** —— 清晰、一致、与 `.harness/knowledge/conventions.md`
+    对齐。
+11. **Comments** —— 解释 *why*,不是 *what*。
+12. **Style / Consistency** —— 与既有模式一致;工具可强制的项应当
+    已被 lint 抓到 (没抓到则提一个 doctor finding)。
+13. **Documentation** —— public API 与 README 在必要时同步更新。
+14. **Context** —— 审视整个 CL,而不是孤立看几行。
+15. **Good things** —— 显式指出做得好的地方。语气也是重要的。
+16. **Alibaba spec** (适用时):naming / constants / OOP / concurrency /
+    exception & logging / MySQL / index / security —— 按
+    **Blocker / Critical / Major** 分级。
+
+### Standards
+
+17. **Code health only goes up。** 让 health 下降的 CL 不可接受,即便
+    "它能跑"。
+18. **`Nit:` 前缀** 用于非阻塞的风格 / 偏好类条目。
+19. must-fix 仅保留给:correctness / 需求违反 / health regression。
+
+### Report
+
+20. 按 *Appendix A* 输出结构化报告。verdict:`ship` (无 must-fix) 或
+    `fix-then-ship`。
+
+## Outputs
+
+- Review 报告 (返回给 agent / 作为 MR 评论发出)。
+
+## Exit Criteria
+
+- 0 个 must-fix gap。
+- 0 个 must-fix code-review finding。
+- code health 未下降。
+
+## Gate
+
+verdict 为 `fix-then-ship` 时 MUST NOT 合并。
+
+---
+
+## Appendix A — review report template (T10)
+
+> Provenance
+> - Authoritative paradigm: Google "What to look for in a code review" (Design · Functionality · Complexity · Tests · Naming · Comments · Style · Docs · Context · Good things) + Alibaba Java Development Manual (Blocker / Critical / Major) + Anthropic gap-style review — code health only goes up
+> - Investigation protocol: run as an isolated sub-agent against `git diff main...HEAD` with proposal / clarify / design / constitution / conventions in scope; verify every REQ-NNN is implemented with a real test; flag any weakened or deleted test; gaps and findings are flowed back, not merged through
+> - Output form: sectioned report — **CORRECTNESS & CONSISTENCY (must-fix)** · **CODE REVIEW (Google dims + Alibaba spec)** · **GOOD** · **VERDICT** (`ship` | `fix-then-ship`); non-blocking items prefixed `Nit:`
+
+```markdown
+# Review — ⟨id / MR⟩
+
+## CORRECTNESS & CONSISTENCY (must-fix)
+- ⟨path:line⟩ — ⟨what is missing or wrong⟩ — violates ⟨REQ-NNN / clause / boundary⟩
+
+## CODE REVIEW (Google dims + Alibaba spec; Nit: = non-blocking)
+- Design: ⟨…⟩
+- Functionality / edges: ⟨…⟩
+- Complexity / over-eng: ⟨…⟩
+- Tests (verify behavior? weakened?): ⟨…⟩
+- Naming / Comments / Consistency: Nit: ⟨…⟩
+- Alibaba spec (Blocker / Critical / Major): ⟨…⟩
+
+## GOOD
+- ⟨…⟩
+
+## VERDICT: ship | fix-then-ship
+```

@@ -1,0 +1,26 @@
+# Project Harness (Claude Code view)
+
+> Provenance (T14)
+> - Authoritative paradigm: Anthropic Claude Code project memory + spec-kit adapter layer — agent-specific surface only, never duplicate AGENTS.md
+> - Investigation protocol: carry only Claude-specific facts (slash-command location, settings / hook path, subagent gate flow-back); pull shared agent context via `@AGENTS.md` import; command list is regenerated from the registry
+> - Output form: ultra-thin file (< 1 KiB) — header · `@AGENTS.md` import · Claude-specific section · auto-generated `/hx-*` command list · usage one-liner
+
+共享 agent 上下文 —— 先加载:
+
+@AGENTS.md
+
+## Claude-specific
+
+- Slash 命令位于 `.claude/commands/` (每个 `/hx-<cmd>` 一个文件)。
+- 权限与 hook 在 `.claude/settings.json` 中配置。
+- Subagent (若启用) 必须把发现回传到主会话,并遵守与调用方 playbook 相同的 Gate。
+
+## Available `/hx-*` commands
+
+{% for cmd in hx_commands -%}
+- `/hx-{{ cmd }}` — {{ skill_descriptions[cmd] }}
+{% endfor %}
+
+## Usage
+
+通过键入斜杠调用命令 (例如 `/hx-next`)。每个命令从 `.harness/playbooks/` 加载对应 playbook,并在 `{{ constitution_path }}` 的项目宪章下运行。

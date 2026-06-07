@@ -1,0 +1,812 @@
+---
+name: hx-baseline
+phase: bootstrap
+flow: [standard, full, epic]
+---
+# /hx-baseline
+
+## Purpose
+
+阅读代码库,产出**项目知识库** —— 八份文档,合在一起就是新贡献者
+(人或 AI) 能开始开发的充分条件。
+
+## Prerequisites
+
+- `/hx-constitution` 已完成 (或其种子文件已存在)。
+
+## Inputs
+
+- 整个项目源码树。
+- 构建 / CI 配置文件。
+- `git log` (近期历史揭示 churn 热点)。
+- (可选) PRD / 领域文档,用于交叉验证推断出的业务模型。
+- (可选) 内部框架登记表、oncall runbook、wiki 页面、事故复盘 ——
+  `business.md` 和 `tech-stack.md` 内部框架章节的一等信息来源。
+
+## Argument — `--depth`
+
+`/hx-baseline` 接受一个可选参数,控制调查深度。**默认 `L2`**。
+升级时调用 `/hx-baseline --depth L3`。
+
+| Tier | Use when | Mandatory items beyond the previous tier |
+|------|----------|------------------------------------------|
+| `L1` survey | 快速 onboarding 阅读;决定是否投入前的 spike | manifest 扫描 · 文件清单 · 顶层架构草图 · 8 份文档骨架齐备,Open Questions 已填 |
+| `L2` standard (默认) | 活跃项目的常规 baseline | `git churn` 热力图 · 依赖面 · 现有传感器盘点 (lint / type / test / hook) · 每个约定都有规范示例 · 内部框架章节注明 owner · **最关键一条流程**的运行时视图 |
+| `L3` deep | 高风险 (安全 · 合规 · 接手不熟悉的遗留系统) | AST/LSP 模块图抽取 · 公共 API 面枚举 (OpenAPI / proto / type exports) · 反推 DB schema · IaC 清单 · 事故史与 bus-factor 分析 · arc42 质量场景填充 · 全部 how-to 配方完成 |
+
+每个层级都包含下一层所需的全部内容。下面的 Exit Criteria 按层级
+分级 gate。
+
+## Investigation protocol — the five-lens toolbelt
+
+知识库的准确度只取决于来源。**三角化** —— 没有任何单一视角能看清整个系统。
+在写每一节之前,使用多类视角。
+
+| Lens | Tools / techniques | What it reveals | Used by |
+|------|--------------------|-----------------|---------|
+| **Static structure** | manifest / lockfile · AST / LSP 模块图 · 公共 API 枚举 (OpenAPI / proto / type exports) · DB schema 扫描 (`information_schema`, migration replay) · IaC / k8s manifest 清单 | 形态:模块、契约、持久化状态、部署拓扑 | `architecture.md` · `tech-stack.md` · `conventions.md` |
+| **Historical** | `git log --since=…` · `git churn` 热力图 (Tornhill *Software Design X-Rays*) · 关键路径 `git blame` · release tag · CHANGELOG | 热点 · churn↔质量相关性 · bus-factor 与代码所有权 | `architecture.md` · `conventions.md` · `setup-and-verify.md` |
+| **Quality** | linter · 类型检查器 · 测试覆盖率 · mutation 抽样 · CI 历史 · 事故复盘 · 带严重度标签的 open issue | 最薄弱处 · 系统在生产中真正崩塌的地方 | `architecture.md` (质量场景) · `conventions.md` (pitfalls) · `how-to/*` |
+| **Domain triangulation** | PRD · 落地页 · 销售 / 支持材料 · 工单聚类 · 用户访谈 · 领域专家会议 | 代码无法独立证明的业务不变量 | `product.md` · `business.md` · `glossary.md` |
+| **Non-code triangulation** | wiki · ADR · runbook · oncall 频道置顶 · 内部框架登记表 · 架构评审纪要 | tribal knowledge —— **`business.md` 业务断言的唯一合法来源** | `business.md` · `tech-stack.md` (内部框架) · `architecture.md` (部署) |
+
+**引用规则。** 每条非平凡断言都必须引用一个 `path:line` (或命令输出)
+**或**一个具名非代码来源 (例如 `PRD §3.2`、`runbook: payments-oncall.md`、
+`interview: 2026-06-04 @owner`)。无来源的断言被禁止 —— 放进 *Open Questions*。
+
+## Steps
+
+1. **确定深度。** 若传入了 `--depth` 则使用它,否则默认 `L2`。
+   在每份文档顶部记录所选层级 (`> depth: L2`)。
+2. **确定性采集** (任何层级都跑)。尽量通过脚本运行:语言 / 框架版本、
+   文件清单、依赖面、现有传感器 (lint / type / test / hook / CI)。
+   `L2`+ 还要算 `git churn` 热点;`L3` 再额外抽取 AST / LSP 模块图、
+   枚举公共 API 面、反推 DB schema、清点 IaC。
+3. **引导知识库。** 若 `.harness/knowledge/` 为空,按 *Appendix A* 的骨架
+   写入八个文件 —— 保留它们的 `> Provenance` 段落不动;它告诉下一位
+   贡献者这份文档背后的权威与应遵循的调查协议。
+4. **逐文档调查。** 对 8 份文档中的每一份,运行下面 *§ Per-doc
+   investigation methodology* 中的协议。迭代直到该文档满足自己的
+   Provenance 契约。每条非平凡断言都引用 `path:line` 或具名非代码来源。
+5. **强制示例。** 对每一条约定 / 技术模式,链接到本仓库中的一个规范
+   示例文件。AI 依赖模式匹配 —— 没有示例,知识库就是空谈。
+6. **`business.md` 是高风险推断。** 每条业务断言默认 *to be confirmed*。
+   清除该标签前必须跨非代码来源 (PRD、领域专家、runbook) 验证。
+   该文档**架构中立** —— 不要假设 DDD 或微服务。
+7. **内部框架。** 内部公司框架**必须**在 `tech-stack.md` 中有独立章节,
+   注明 owner、内部文档链接、已知 pitfalls。与框架 owner 交叉验证 ——
+   公开文档不够。
+8. **Open Questions** 放在每份文档底部,记录任何五视角都无法证实的事项。
+   **不要编造。**
+9. **晋升模式。** 标记 1–3 个反复出现的良性模式,供 `/hx-constitution`
+   下一次运行考虑。
+10. **覆盖度自审。** 宣布完成前,填写 *§ Coverage self-audit* 中的
+    *Coverage self-audit* 表,并解决任何未达到所选深度层级的行。
+
+## Per-doc investigation methodology
+
+按文件运行对应的协议。层级要求是累加的。
+
+### `product.md`
+
+- 视角:domain triangulation (主) · non-code triangulation。
+- L1:从 README、落地页、Top GitHub issue、README badge 提取
+  problem / users / value。
+- L2:+ 访谈 PM 或产品负责人;以入口 `path:line` 记录核心能力;
+  按"系统支持的步骤"记录关键旅程。
+- L3:+ 成功指标 (北极星 + 护栏) 与分析仪表盘交叉验证;
+  scope / non-goals 由 owner 签字确认。
+
+### `architecture.md`
+
+- 视角:static structure (主) · historical · quality。
+- L1:由 README + manifest 扫描得到 L1 C4 context 图。
+- L2:+ L2 container 图,标注每个容器的技术、入口、owner;
+  **最关键一条流程**的运行时视图;cross-cutting (errors / logging /
+  config / auth) 配 `path:line`。
+- L3:+ 对高流量 / 高风险容器画 L3 component 图;arc42 质量场景
+  (性能 · 可用性 · 安全 · 可修改性);从模块图中提取"intended vs
+  accidental"边界清单;为 `git log` 中发现的不可逆决策补全 ADR 链。
+
+### `tech-stack.md`
+
+- 视角:static structure · historical (release tag, 版本 churn) ·
+  non-code (内部框架登记表)。
+- L1:列出顶级依赖及其版本与角色。
+- L2:+ 每项技术一张 Radar 卡 (role · how-we-use-it `path:line` ·
+  best practice · pitfalls · version · maturity ring + 理由);内部框架
+  章节注明 owner 与 pitfalls。
+- L3:+ 每个公共 API 依赖都映射到一个 Radar ring 并记录理由;
+  弃用用法打 Hold 并附移除计划;每个 Adopt / Hold ring 都有 ADR 交叉引用。
+
+### `business.md`
+
+- 视角:domain triangulation (主,必备) · non-code triangulation。
+  **仅靠 static structure 永远不够。**
+- L1:仅 L1 能力图;所有条目 `to-be-confirmed`。
+- L2:+ 带 owner 的 L2 能力图;由代码名种子生成的 ubiquitous-language
+  表;**每条 L2 能力至少引用一个非代码来源** (PRD §、interview、runbook)。
+- L3:+ 带热点的领域事件时间线 (Event Storming);带非代码引用的
+  rules / invariants 表;每个条目要么清除 to-be-confirmed,要么明确
+  parked 到 Open Questions。
+
+### `conventions.md`
+
+- 视角:static structure (lint / type 配置) · historical (`git churn`
+  找出活的约定) · quality (事故复盘补 pitfalls)。
+- L1:列出强制章节标题,即便为空;凡是工具可强制的,链接到工具配置。
+- L2:+ 每节有 Project practice 一句 + Industry paradigm 引用 +
+  规范 `path:line` + 从 churn 热点抽样的 GOOD / BAD 对。
+- L3:+ 并发 / 事务 / 分布式锁 (含 fencing-token 注意事项) / 缓存 /
+  MQ / 中间件 / 配置 / API / observability / 安全全部完成;每节都有
+  一个来自项目事故史的反模式。
+
+### `glossary.md`
+
+- 视角:domain triangulation · static structure。
+- L1:Top 10 领域术语 ⇄ 代码名。
+- L2:+ `business.md` ubiquitous-language 表中的每个代码名都映射到
+  其 `path:line` 定义点;列出待避免的同义词。
+- L3:+ glossary 由领域专家交叉验证;禁用术语列表可通过 lint 规则强制。
+
+### `setup-and-verify.md`
+
+- 视角:static structure · historical (setup 命令的 CHANGELOG)。
+- L1:install + run-tests 命令在干净 checkout 上测试通过。
+- L2:+ 完整 install → build → test → run-dev 链路测试通过;端到端
+  用户可见验证路径已记录,与 `verify.sh` full 模式一致。
+- L3:+ 提交 happy-path 录屏或终端日志;测量冷启动时间;列出常见
+  故障模式与处理。
+
+### `how-to/*`
+
+- 视角:static structure (找规范锚点) · quality (复盘找反模式)。
+- L1:README 索引 + 三个最高杠杆配方 (`add-endpoint`、
+  `add-migration`、`write-test`)。
+- L2:+ 六个中间件配方 (`transactions`、`concurrency-locks`、
+  `distributed-lock`、`caching`、`messaging-mq`、`middleware`)。
+- L3:+ 九个配方全部完成,带项目 `path:line` 锚点和真实事故抽取的
+  反模式。
+
+## Outputs
+
+`.harness/knowledge/` 下的 8 份知识文档:
+
+- `product.md` —— Working Backwards:问题 · 用户 · 价值主张 · 核心能力 ·
+  关键旅程 · 成功指标 · 范围 / 非目标。
+- `architecture.md` —— C4 (Context / Container / Component) + arc42
+  (运行时 / 部署 / cross-cutting / 质量场景) + ADR 链 + diagrams-as-code。
+- `tech-stack.md` —— Thoughtworks Tech Radar 卡片 (每项技术:角色 ·
+  我们的用法配 `path:line` · 最佳实践 · pitfalls · 版本 · 成熟度 ring)
+  **+ 强制的内部公司框架章节**。
+- `business.md` —— BIZBOK 能力图 + Event Storming / Domain Storytelling +
+  ubiquitous language (架构中立;默认 *to be confirmed*)。
+- `conventions.md` —— Google Style + 阿里巴巴 Java 开发手册 + 云原生:
+  代码风格 / 命名 · 错误处理 · 日志 · 测试 · **并发与锁 · 事务 (本地 +
+  Saga / Outbox / TCC) · 分布式锁 (Redlock + fencing token 注意事项 /
+  ZK · etcd) · 缓存 (cache-aside / read-write + TTL / 失效 + 穿透 ·
+  击穿 · 雪崩) · 消息 / MQ (幂等 · Outbox · 顺序 · DLQ · at-least-once) ·
+  中间件 · 配置与密钥 · API 设计 · observability · 安全**。
+- `glossary.md` —— 领域术语 ⇄ 代码名映射 (与 ubiquitous language 联动)。
+- `setup-and-verify.md` —— 怎么跑 / 构建 / 测试,端到端 verify 路径。
+- `how-to/` —— Diátaxis 配方:`transactions.md` · `concurrency-locks.md` ·
+  `distributed-lock.md` · `caching.md` · `messaging-mq.md` · `middleware.md` ·
+  `add-endpoint.md` · `add-migration.md` · `write-test.md`。
+
+## Exit Criteria
+
+所有深度层级的共同要求:
+
+- 每条非平凡断言都引用 `path:line`、命令输出或具名非代码来源。
+  不接受无来源断言。
+- `business.md` 中未交叉验证的条目标记 *to be confirmed*。
+- 适用处有 Open Questions;不得编造。
+- 在每份文档顶部记录所选的深度层级。
+- *Coverage self-audit* 表已填写,每一行都满足所选层级。
+
+层级专属要求:
+
+- **L1**:全部 8 份文档骨架就位,且至少填了 Problem / Users /
+  Top-level architecture / Top dependencies / Install command。
+- **L2** (默认):上述全部 **+** `tech-stack.md` 内含 owner 的内部框架
+  章节 · `architecture.md` 有最关键流程的运行时视图 · `conventions.md`
+  每一节都有规范示例 · 六个中间件 how-to 配方齐备 · 端到端 verify 路径
+  已测试。
+- **L3**:上述全部 **+** AST / LSP 模块图反映在 `architecture.md` ·
+  公共 API 面已枚举 · DB schema 已反推 · IaC 清单已记录 · arc42 质量场景
+  填充完毕 · 事故史 / bus-factor 分析就位 · 九个 how-to 配方全部完成
+  且带项目锚点。
+
+## Gate
+
+拿到这份知识库的新贡献者必须能在不问原作者的前提下开始开发。
+如果做不到,提升 `--depth` 再跑一次。
+
+## Anti-patterns (forbidden)
+
+- **编造。** 杜撰任何来源都不支持的事实、文件路径、owner 或不变量。
+- **誊抄。** 不加合成地原样照搬 manifest、代码、README —— 比 `cat`
+  多不出任何信息。
+- **无来源的架构图。** 框框对不上代码库里任何真实模块。指不到模块,
+  就不要画。
+- **仅凭代码下业务不变量。** `business.md` 中没有非代码来源的规则
+  都是猜测;在交叉验证完成前标记 *to be confirmed*。
+- **没有项目示例的"最佳实践"。** 没有规范 `path:line` 的约定就是
+  空谈,会被忽略。
+- **跳过内部框架章节。** 内部框架会悄无声息地污染下游每一个 agent 答案。
+- **高影响事实的单一来源。** 生产行为、鉴权模型、涉钱逻辑 ——
+  这些必须在至少两个视角下三角化。
+- **删去 `to-be-confirmed` 标签却不记录来源,从而晋升业务条目。**
+  这个标签存在的意义就是可追溯。
+
+## Coverage self-audit
+
+退出前填写。每一行都必须达到或超过所选层级 —— 任何低于该层级的行
+都会阻塞完成,转入更深一轮的调查。
+
+| Lens / Coverage area | Required at L1 | Required at L2 | Required at L3 | Met? (cite evidence) |
+|----------------------|----------------|----------------|----------------|----------------------|
+| Static structure — manifest & 依赖 | 已列出 | + 版本与角色 | + 每个依赖的完整 Radar ring | ⟨…⟩ |
+| Static structure — 模块图 | 仅顶层 | + container 图 | + AST / LSP component 图 | ⟨…⟩ |
+| Static structure — 公共 API 面 | n/a | 名称已枚举 | + 完整契约 (OpenAPI / proto) | ⟨…⟩ |
+| Static structure — 持久化状态 | n/a | 表已列出 | + schema + 迁移史 | ⟨…⟩ |
+| Static structure — 部署 / IaC | n/a | n/a | + 清单已记录 | ⟨…⟩ |
+| Historical — churn 热点 | n/a | Top 10 已引用 | + churn ↔ 事故相关性 | ⟨…⟩ |
+| Historical — bus factor | n/a | n/a | + 关键模块的 owner | ⟨…⟩ |
+| Quality — 传感器盘点 | 已列出 | + 阈值 | + mutation / 关键路径覆盖率 | ⟨…⟩ |
+| Quality — 事故史 | n/a | Top 3 在 pitfalls 中引用 | + 每模块事故时间线 | ⟨…⟩ |
+| Domain — 业务不变量 | parked 为 Open Questions | 每条 L2 能力 ≥ 1 个非代码来源 | + 每条不变量都已清除或带理由 parked | ⟨…⟩ |
+| Domain — ubiquitous language | Top 10 已映射 | business.md 术语全覆盖 | + lint 强制的禁用术语列表 | ⟨…⟩ |
+| Non-code — 内部框架 | 仅命名 | + owner + pitfalls | + 已记录 owner 交叉验证 | ⟨…⟩ |
+| Non-code — runbook / oncall | n/a | 已链接 | + 在 `architecture.md` 质量场景中引用 | ⟨…⟩ |
+
+---
+
+## Appendix A — Knowledge base seed (T2)
+
+引导这 8 个文件时,直接照抄下列模板。所有 heading 保留英文;正文跟随
+项目语言。每个种子都带一个 `> Provenance` 段落 —— 不要删;它告诉下一位
+贡献者这份文档背后的权威与应遵循的调查协议。
+
+### `.harness/knowledge/product.md`
+```markdown
+# Product — {{ project_name }}
+
+> Provenance
+> - Authoritative paradigm: Amazon Working Backwards / PR-FAQ + Marty Cagan (four product-discovery risks: value · usability · feasibility · viability)
+> - Investigation protocol: read README / landing page / customer scenarios; interview PM and business stakeholders; evidence-or-silence — every business claim must be cross-validated against a non-code source
+> - Output form: Working-Backwards narrative (problem → users → value → capabilities → journeys → metrics), press-release framing + FAQ for residual ambiguity
+
+## Problem & Users
+⟨one paragraph: what painful problem, for whom; who suffers most⟩
+
+## Value Proposition (Press-Release style)
+⟨headline · sub-headline · one quote from a representative user⟩
+
+## Core Capabilities
+- ⟨capability⟩ — entry: ⟨path:line⟩ — outcome: ⟨user-visible result⟩
+
+## Key Journeys
+1. ⟨persona⟩ wants to ⟨job⟩ → ⟨steps the system supports⟩ → ⟨success state⟩
+
+## Success Metrics
+- North-star: ⟨…⟩
+- Guardrails: ⟨quality / cost / latency / safety⟩
+
+## Scope / Non-goals
+- In: ⟨…⟩
+- Out (for now): ⟨…⟩
+
+## Open Questions (FAQ)
+⟨items still ambiguous; cite who can answer⟩
+```
+
+### `.harness/knowledge/architecture.md`
+```markdown
+# Architecture (as-is) — every claim cites path:line
+
+> Provenance
+> - Authoritative paradigm: C4 model (L1 Context / L2 Container / L3 Component) + arc42 (runtime · deployment · cross-cutting · quality scenarios) + ADR chain (MADR / Nygard)
+> - Investigation protocol: read manifest / lockfile; reconstruct the module graph via AST or LSP; read IaC / deployment manifests; cross-reference `git churn` hotspots; evidence-or-silence — render the *as-is*, not an aspirational architecture
+> - Output form: diagrams-as-code (Mermaid / Structurizr) with narrative + back-links to ADRs; "intended vs accidental" boundaries called out explicitly
+
+## L1 — System Context (C4)
+```mermaid
+C4Context
+  Person(user, "End user")
+  System(this, "{{ project_name }}", "what it does in one line")
+  System_Ext(ext, "External system", "purpose")
+  Rel(user, this, "uses")
+  Rel(this, ext, "calls")
+```
+⟨narrative: who talks to the system; what crosses the trust boundary⟩
+
+## L2 — Containers
+```mermaid
+C4Container
+  Container(api, "API", "framework", "responsibility")
+  ContainerDb(db, "DB", "engine", "data owned")
+```
+⟨per container: responsibility · tech · entry path:line · ownership⟩
+
+## L3 — Components (only for high-traffic / high-risk containers)
+⟨component — responsibility — interfaces — path:line⟩
+
+## Runtime view (arc42)
+⟨sequence for the most critical flow: request → … → response, with cite⟩
+
+## Deployment view (arc42)
+⟨environments · topology · replicas · scaling triggers; cite IaC files⟩
+
+## Cross-cutting (arc42)
+- Error handling: ⟨pattern⟩ — path:line
+- Logging / tracing: ⟨pattern⟩ — path:line
+- Config / secrets: ⟨pattern⟩ — path:line
+- Auth / authz: ⟨pattern⟩ — path:line
+
+## Quality scenarios (arc42)
+- Performance: ⟨stimulus → response → measure⟩
+- Availability: ⟨…⟩
+- Security: ⟨…⟩
+- Modifiability: ⟨…⟩
+
+## Boundaries (intended vs accidental)
+⟨A → B [intended | accidental] — evidence path:line⟩
+
+## Where new code goes
+⟨change of type X → put it in module Y because …⟩
+
+## ADR chain
+- [ADR-0001] ⟨title⟩ — status — link `.harness/knowledge/adr/0001-*.md`
+- ⟨…⟩
+
+## Open Questions
+⟨unverifiable from code; to confirm with humans⟩
+```
+
+### `.harness/knowledge/tech-stack.md`
+```markdown
+# Tech Stack — Thoughtworks Tech Radar cards
+
+> Provenance
+> - Authoritative paradigm: Thoughtworks Tech Radar (Adopt / Trial / Assess / Hold) + ADR (MADR) — every tech choice is positioned on the ring with reasoning
+> - Investigation protocol: read manifest / lockfile / IaC / internal-framework registry; calibrate the ring against `git churn` and incident history; evidence-or-silence; **internal company frameworks are a first-class section** because their behavior is rarely publicly documented
+> - Output form: one Radar card per tech (Role · How we use it with `path:line` · Best practice · Pitfalls · Version · Maturity ring); ADR cross-links at the bottom
+
+## ⟨Tech / Component⟩
+- Role here:        ⟨what it is used for in this repo⟩
+- How we use it:    ⟨project-specific usage⟩ — example: ⟨path:line⟩
+- Best practice:    ⟨canonical norm for this tech (link to authority)⟩
+- Pitfalls:         ⟨known gotchas in this repo · failure history⟩
+- Version:          v⟨x.y.z⟩  · pinned at ⟨path:line in lockfile⟩
+- Maturity ring:    Adopt | Trial | Assess | Hold  — rationale: ⟨…⟩
+
+⟨repeat per tech⟩
+
+## Internal company frameworks (mandatory section)
+
+> Internal frameworks are first-class citizens. Their behavior is usually
+> not publicly documented — getting this section wrong silently corrupts
+> every downstream agent answer. Cross-validate with the framework owner.
+
+## ⟨Internal framework name⟩
+- Role here:        ⟨…⟩
+- How we use it:    ⟨…⟩ — example: ⟨path:line⟩
+- Owner / contact:  ⟨team / channel⟩
+- Internal docs:    ⟨wiki link / repo⟩
+- Pitfalls:         ⟨non-obvious behaviour, version-specific quirks⟩
+- Version:          v⟨x.y.z⟩
+- Maturity ring:    Adopt | Trial | Assess | Hold
+
+## ADR cross-links
+- ⟨tech choice⟩ ← `adr/⟨NNNN⟩-⟨title⟩.md`
+```
+
+### `.harness/knowledge/business.md`
+```markdown
+# Business — architecture-neutral
+
+> Provenance
+> - Authoritative paradigm: BIZBOK capability map + Event Storming / Domain Storytelling + Ubiquitous Language — architecture-neutral (does not assume DDD or microservices)
+> - Investigation protocol: read PRD / business wiki; interview domain experts; evidence-or-silence; **every business claim defaults to *to be confirmed*** and can be cleared only after cross-validation against a non-code source
+> - Output form: capability map + domain event timeline + ubiquitous-language dictionary + rules / invariants with status; Open Questions parked for the domain owner
+
+> Everything below defaults to *to be confirmed* until cross-validated
+> with a non-code source (PRD, domain expert, existing domain doc).
+
+## Business Capability Map (BIZBOK)
+- ⟨L1 capability⟩
+  - ⟨L2 capability⟩ — owner: ⟨team⟩ — status: to-be-confirmed
+  - ⟨L2 capability⟩ — owner: ⟨team⟩ — status: to-be-confirmed
+
+## Ubiquitous Language
+| Term | Definition | Used in code as | Status |
+| ---- | ---------- | --------------- | ------ |
+| ⟨…⟩ | ⟨…⟩ | ⟨path:line⟩ | to-be-confirmed |
+
+## Key Domain Events (Event Storming)
+⟨timeline: trigger → event → policy → command → event …; mark hotspots⟩
+
+## Key Journeys (Domain Storytelling)
+1. ⟨actor⟩ ⟨action⟩ ⟨work object⟩ → ⟨downstream effect⟩
+
+## Rules and Invariants
+- ⟨rule⟩ — status: to-be-confirmed — source: ⟨PRD §… / interview⟩
+
+## Open Questions
+⟨items requiring domain expert input; cite who can answer⟩
+```
+
+### `.harness/knowledge/conventions.md`
+```markdown
+# Conventions — Google Style + 阿里巴巴开发手册 + Cloud-Native
+
+> Provenance
+> - Authoritative paradigm: Google Style Guides + Alibaba Java Development Manual + 12-Factor / Cloud-Native + Chris Richardson's microservices patterns — the union covers code style through distributed concerns
+> - Investigation protocol: sample `git churn` hotspots and incident history; every convention must be backed by an in-repo `path:line` example and a citation to its industry source; evidence-or-silence; tool-enforceable rules link to tool config rather than duplicating prose
+> - Output form: one section per concern — Project practice + Industry paradigm + canonical `path:line` + GOOD / BAD pair; mandatory sections include concurrency / transactions / distributed locks (with fencing-token caveat) / caching / MQ / middleware / config / API / observability / security
+
+## Code Style & Naming
+- Project practice: ⟨…⟩
+- Industry paradigm: ⟨e.g. Google Java Style §5⟩
+- Canonical example: ⟨path:line⟩
+- GOOD: ⟨snippet⟩ · BAD: ⟨snippet⟩
+
+## Error Handling
+- Project practice: ⟨…⟩  · Industry: 阿里 §异常日志
+- GOOD / BAD · path:line
+
+## Logging
+- Project practice: ⟨structured logger · request_id · level policy⟩
+- Industry: 12-Factor §XI Logs
+- GOOD / BAD · path:line
+
+## Testing
+- Project practice: ⟨pyramid / contract / golden tests⟩
+- Industry: Google Testing on the Toilet · 阿里 §单元测试
+- GOOD / BAD · path:line
+
+## Concurrency & Locks
+- Project practice: ⟨thread / coroutine model · shared-state policy⟩
+- Industry: 阿里 §并发处理 · Java Concurrency in Practice
+- Pitfalls: deadlock order · livelock · false-sharing
+- GOOD / BAD · path:line
+
+## Transactions (local + Saga / Outbox / TCC)
+- Project practice: ⟨local TX boundary; long-running compensation pattern used⟩
+- Industry: Chris Richardson "Microservices Patterns" §Saga / Transactional Outbox / TCC
+- Pitfalls: dual-write inconsistency · non-idempotent compensation
+- GOOD / BAD · path:line
+
+## Distributed Locks
+- Project practice: ⟨Redis Redlock / ZooKeeper / etcd lease⟩
+- Industry: Martin Kleppmann "How to do distributed locking" · ZK / etcd recipes
+- **Fencing token caveat**: Redlock alone cannot prevent GC-pause-induced
+  stale-lock writes; **always pair with a monotonically increasing fencing
+  token enforced at the resource side**.
+- GOOD / BAD · path:line
+
+## Caching
+- Project practice: ⟨cache-aside / read-through / write-through⟩
+- TTL & invalidation: ⟨policy · stampede protection⟩
+- Pitfalls: penetration (空值缓存 + 布隆过滤) · breakdown (互斥重建 / 提前刷新) ·
+  avalanche (TTL 抖动 / 多级缓存)
+- GOOD / BAD · path:line
+
+## Messaging / MQ
+- Project practice: ⟨broker · topic / queue layout · consumer group strategy⟩
+- Patterns: idempotency keys · Transactional Outbox · ordering (partition key) ·
+  DLQ · at-least-once + 幂等消费
+- Industry: Richardson §Messaging Patterns
+- GOOD / BAD · path:line
+
+## Middleware
+- Project practice: ⟨Redis · MQ · Search · Object store⟩ — per item: usage
+  shape + failure mode + path:line
+- Industry: 12-Factor §IV Backing services
+- GOOD / BAD · path:line
+
+## Config & Secrets
+- Project practice: ⟨env / vault / config service · rotation policy⟩
+- Industry: 12-Factor §III Config · OWASP secret management
+- GOOD / BAD · path:line
+
+## API Design
+- Project practice: ⟨REST / RPC / GraphQL conventions · versioning · pagination⟩
+- Industry: Google API Improvement Proposals (AIP) · Microsoft REST guidelines
+- GOOD / BAD · path:line
+
+## Observability
+- Project practice: ⟨metrics · logs · traces · SLO / SLI⟩
+- Industry: Google SRE Book · OpenTelemetry semantic conventions
+- GOOD / BAD · path:line
+
+## Security
+- Project practice: ⟨authn / authz · input validation · output encoding⟩
+- Industry: OWASP Top 10 · 阿里 §安全规约
+- GOOD / BAD · path:line
+```
+
+### `.harness/knowledge/glossary.md`
+```markdown
+# Glossary — term ⇄ code name
+
+> Provenance
+> - Authoritative paradigm: DDD Ubiquitous Language — the glossary is the single source of truth for the domain↔code naming map
+> - Investigation protocol: keep aligned with the ubiquitous-language table in `business.md`; every mapping cites the `path:line` of its definition site; synonyms and forbidden terms are listed explicitly to prevent drift
+> - Output form: table — Domain term · Code name · Defined at · Synonyms-to-avoid
+
+| Domain term | Code name | Defined at | Synonyms (avoid) |
+| ----------- | --------- | ---------- | ---------------- |
+| ⟨…⟩ | ⟨…⟩ | ⟨path:line⟩ | ⟨…⟩ |
+```
+
+### `.harness/knowledge/setup-and-verify.md`
+```markdown
+# Setup and Verify
+
+> Provenance
+> - Authoritative paradigm: 12-Factor §V Build / Release / Run + spec-kit single-source-of-truth verify (`verify.sh` is the only sensor)
+> - Investigation protocol: derive the command chain from `.harness/scripts/{{ script_shell }}/verify.sh`; actually run install → build → test → run to confirm; no aspirational commands
+> - Output form: exact copy-pasteable commands per stage (install · build · test · run dev) + an end-to-end user-visible verification path mirroring `verify.sh` full mode
+
+## Install
+⟨exact commands⟩
+
+## Build
+⟨exact commands⟩
+
+## Test
+⟨exact commands⟩
+
+## Run dev
+⟨exact commands⟩
+
+## How to verify a change end-to-end
+⟨step-by-step user-visible verification path; mirrors `verify.sh` full mode⟩
+```
+
+### `.harness/knowledge/how-to/README.md`
+```markdown
+# How-to recipes — Diátaxis
+
+> Provenance
+> - Authoritative paradigm: Diátaxis (How-to guides quadrant) + spec-kit recipe culture — recipes are task-oriented, not tutorial or reference
+> - Investigation protocol: every recipe decomposes as Goal → Prerequisites → Steps (with `path:line` anchors) → Verify → Anti-patterns; keep each recipe under one screen; link back to `conventions.md` and `architecture.md` anchors instead of restating them
+> - Output form: short · copy-pasteable · cross-linked recipes; the mandatory baseline set is enumerated below
+
+Recipes (mandatory baseline):
+- `transactions.md` — local TX boundary · Saga / Outbox / TCC selection
+- `concurrency-locks.md` — in-process locking · atomics · lock-ordering
+- `distributed-lock.md` — Redlock / ZK / etcd with **fencing token**
+- `caching.md` — cache-aside template · stampede / penetration / breakdown / avalanche
+- `messaging-mq.md` — produce-once-via-Outbox · idempotent consumer · DLQ
+- `middleware.md` — adding / replacing a backing service safely
+- `add-endpoint.md` — new endpoint scaffold + tests + observability
+- `add-migration.md` — backward-compatible schema migration
+- `write-test.md` — choosing test level · faking vs. integration
+```
+
+### `.harness/knowledge/how-to/transactions.md`
+```markdown
+# How-to — Transactions (local + Saga / Outbox / TCC)
+
+> Provenance
+> - Authoritative paradigm: Chris Richardson "Microservices Patterns" §Saga / Transactional Outbox / TCC — pick the lightest pattern that satisfies the consistency requirement
+> - Investigation protocol: classify the write (single-resource / dual-write / cross-service long-running / strong reservation); decision tree → local TX → Outbox → Saga → TCC; idempotency is non-negotiable
+> - Output form: decision tree + skeleton with `path:line` anchor + anti-patterns (dual-write without Outbox · Saga step without idempotency key · non-idempotent compensation)
+
+## When to use what
+- Single DB, single service → **local transaction**.
+- DB + message broker (dual write) → **Transactional Outbox**.
+- Long-running cross-service flow → **Saga** (orchestration or choreography).
+- Strong consistency with reservation semantics → **TCC** (Try-Confirm-Cancel).
+
+## Skeleton
+⟨code snippet with path:line anchor in this repo⟩
+
+## Anti-patterns
+- Dual write to DB and broker without Outbox.
+- Saga step without idempotency key.
+- Compensation that is not itself idempotent.
+```
+
+### `.harness/knowledge/how-to/concurrency-locks.md`
+```markdown
+# How-to — Concurrency & in-process locks
+
+> Provenance
+> - Authoritative paradigm: Java Concurrency in Practice + Alibaba Java Development Manual §Concurrency — prefer immutability and lock-free over synchronization
+> - Investigation protocol: identify shared mutable state; tune lock granularity / order / fairness; favor immutable or thread-local data, then atomics, then mutex with documented lock order
+> - Output form: decision tree + project-wide lock-order convention + `path:line` anchors + anti-patterns (lock across I/O · inconsistent nested order · synchronize on a public object)
+
+## Decision order
+1. Can the state be immutable / thread-local? → no lock.
+2. Single hot field? → atomic.
+3. Multiple fields, short critical section? → mutex with **documented lock order**.
+4. Read-heavy? → RW-lock or copy-on-write.
+
+## Lock order convention
+⟨project-wide ordering; cite the canonical declaration site⟩
+
+## Anti-patterns
+- Holding a lock across I/O.
+- Nested locks taken in inconsistent order.
+- `synchronized` on a public object.
+```
+
+### `.harness/knowledge/how-to/distributed-lock.md`
+```markdown
+# How-to — Distributed locks (with fencing token)
+
+> Provenance
+> - Authoritative paradigm: Martin Kleppmann "How to do distributed locking" + ZooKeeper / etcd lease recipes — Redlock-style advisory locks are not safe for correctness without a fencing token
+> - Investigation protocol: ask whether GC pauses / clock drift are tolerable; if not, a coordination service (ZK / etcd) with leases is the default and **a fencing token enforced at the resource side is mandatory**
+> - Output form: fencing-token sequence + resource-side validation skeleton + anti-patterns (Redlock alone for correctness · `==` token comparison · lease renewal coupled to guarded I/O)
+
+## Default choice
+- **Use a coordination service with leases (ZooKeeper / etcd) when correctness
+  matters.** Redis Redlock is acceptable for advisory locks but **must** be
+  paired with a fencing token enforced at the resource side.
+
+## Fencing token flow
+1. Acquire lock → broker returns monotonically increasing token N.
+2. Every protected write attaches token N.
+3. Resource rejects writes with token < latest seen.
+
+## Skeleton
+⟨code snippet with path:line⟩
+
+## Anti-patterns
+- Redlock alone protecting a critical resource (GC pause → stale writer wins).
+- Token compared with `==` instead of `>=`.
+- Lease renewal coupled to the same I/O the lock guards.
+```
+
+### `.harness/knowledge/how-to/caching.md`
+```markdown
+# How-to — Caching (cache-aside + the three failure modes)
+
+> Provenance
+> - Authoritative paradigm: cache-aside / read-through / write-through + Alibaba §Cache — explicit handling for the three classic failure modes (penetration · breakdown · avalanche)
+> - Investigation protocol: classify read-heavy vs write-heavy; cache-aside is the default unless write-through is justified; for every cache deployment, name the mitigation for each of the three failure modes (TTL jitter, mutex / lease rebuild, null-caching + bloom filter, L1+L2)
+> - Output form: pattern skeleton + per-failure-mode mitigation checklist + `path:line` + anti-patterns (identical TTLs · no rebuild mutex on hot keys · forever-cache without invalidation hook)
+
+## Pattern
+Cache-aside is the default unless write-through is justified.
+
+## Three failure modes
+- **Penetration (穿透)**: invalid keys hit DB → cache null with short TTL +
+  optional bloom filter.
+- **Breakdown (击穿)**: hot key expires → mutex / lease rebuild · early refresh.
+- **Avalanche (雪崩)**: many keys expire together → TTL jitter · L1+L2 cache ·
+  graceful degradation.
+
+## Skeleton
+⟨code snippet with path:line⟩
+
+## Anti-patterns
+- TTL identical across keys (avalanche).
+- No mutex on rebuild for hot keys (breakdown).
+- Forever-cache without invalidation hooks.
+```
+
+### `.harness/knowledge/how-to/messaging-mq.md`
+```markdown
+# How-to — Messaging / MQ (produce-once · idempotent consume · DLQ)
+
+> Provenance
+> - Authoritative paradigm: Chris Richardson §Messaging Patterns — at-least-once delivery + idempotent consumers; "exactly-once" across systems is a fiction without end-to-end idempotency
+> - Investigation protocol: weigh at-most-once vs at-least-once vs claimed exactly-once delivery costs; default to at-least-once + idempotent consumer + DLQ; produce via Transactional Outbox to avoid dual-write
+> - Output form: produce-side Outbox flow + consume-side idempotency-key + DLQ path + anti-patterns (cross-system exactly-once claim · swallowed consumer exception · single partition = no parallelism)
+
+## Produce side
+- Write event to **Outbox table** inside the same DB transaction as the state
+  change. A relay publishes to the broker. Never dual-write directly.
+
+## Consume side
+- Use an **idempotency key** (event id) and a dedup store.
+- **Ordering** comes from partition key — do not rely on broker-global order.
+- Poison messages go to **DLQ** with the exception trace and retry count.
+
+## Skeleton
+⟨code snippet with path:line⟩
+
+## Anti-patterns
+- "Exactly-once" promises across systems without end-to-end idempotency.
+- Catching and swallowing the consumer exception (silent loss).
+- Single partition per topic = no parallelism.
+```
+
+### `.harness/knowledge/how-to/middleware.md`
+```markdown
+# How-to — Add / replace a backing service safely
+
+> Provenance
+> - Authoritative paradigm: 12-Factor §IV Backing services + Strangler Fig — backing services are pluggable; no big-bang swaps
+> - Investigation protocol: insert an abstraction layer; roll out behind a config flag with canary; for replacements run dual-write + shadow-read until parity is proven; retain a rollback path for one release cycle
+> - Output form: numbered steps + config-change points + rollback path + anti-patterns (SDK leaking into domain · replace without parity proof · no documented rollback)
+
+## Steps
+1. Document role + read/write shape in `tech-stack.md`.
+2. Add behind an interface; never call the SDK from business code.
+3. Roll out behind a config flag; canary in one environment.
+4. For replacements, run dual-write + shadow read until parity holds.
+5. Cut over; **retain rollback path for one release cycle**.
+
+## Anti-patterns
+- SDK leaking into domain layer.
+- Replacing without dual-write / shadow read parity proof.
+- No documented rollback.
+```
+
+### `.harness/knowledge/how-to/add-endpoint.md`
+```markdown
+# How-to — Add a new endpoint
+
+> Provenance
+> - Authoritative paradigm: Google API Improvement Proposals (AIP) + project `conventions.md` §API Design — consistency with the nearest in-repo precedent beats pure spec compliance
+> - Investigation protocol: copy the most recent endpoint of the same shape as the canonical anchor; TDD-first (contract test + edge cases before handler); wire authn / authz / validation / logging / metrics / tracing as a single pass
+> - Output form: numbered steps + anchor `path:line` + test & observability checklist + anti-patterns (test after the fact · skipping authz on "internal" routes · hand-rolled validation when a pipeline exists)
+
+## Steps
+1. Pick the canonical example: ⟨path:line⟩.
+2. Write the failing test first (contract + edge cases).
+3. Add the handler + request / response types.
+4. Wire authn / authz · validation · logging · metrics · tracing span.
+5. Update OpenAPI / proto / GraphQL schema.
+6. End-to-end verify; run `verify.sh` full mode.
+
+## Anti-patterns
+- No test or test added after the fact.
+- Skipping authz because "internal endpoint".
+- Hand-rolling validation when project has a validation pipeline.
+```
+
+### `.harness/knowledge/how-to/add-migration.md`
+```markdown
+# How-to — Add a backward-compatible migration
+
+> Provenance
+> - Authoritative paradigm: Expand / Contract migration pattern + Alibaba §MySQL — schema changes ship as a sequence of backward-compatible steps, never one destructive cut
+> - Investigation protocol: decompose every change into five phases — Expand (nullable add) → Dual-write → Backfill (chunked, throttled, idempotent) → Switch read → Contract (drop old after one safe release); use online DDL tooling on hot tables
+> - Output form: five-step checklist + project-specific migration tool commands + anti-patterns (NOT NULL + no default on hot table · locking DDL without online tool · non-idempotent partial backfill)
+
+## Steps (Expand → Contract)
+1. **Expand**: add new nullable column / table / index online.
+2. **Dual-write**: code writes both old and new shape.
+3. **Backfill**: chunked, throttled; idempotent.
+4. **Switch read**: consumers move to new shape behind flag.
+5. **Contract**: drop old shape after one safe release.
+
+## Anti-patterns
+- Single migration that adds NOT NULL with no default on a hot table.
+- Locking DDL on a large table without online tooling.
+- Rolling back a partially-applied backfill without idempotency.
+```
+
+### `.harness/knowledge/how-to/write-test.md`
+```markdown
+# How-to — Write a test
+
+> Provenance
+> - Authoritative paradigm: Google Testing on the Toilet + test pyramid + Alibaba §Unit testing — pick the cheapest level that proves the behavior
+> - Investigation protocol: write at the smallest level that exercises the behavior end-to-end (pure logic → unit · adapter / IO → integration with real service or testcontainers · full flow → e2e); the four scenario classes (boundary · error · timing · concurrency) must each be considered
+> - Output form: level-choice rule + naming convention + AAA (Arrange · Act · Assert) structure + anti-patterns (mocking the type under test · asserting on log strings · multi-concern assertions in one test)
+
+## Test level choice
+- Pure logic → unit.
+- Adapter / IO → integration with real service or testcontainers.
+- Full flow / regression → end-to-end (rare; expensive).
+
+## Naming
+- `test_<unit>__<scenario>__<expected>` (or project equivalent).
+
+## Structure
+- Arrange · Act · Assert. No hidden assertions in helpers.
+
+## Anti-patterns
+- Mocking the type under test.
+- Asserting on log strings instead of behavior.
+- One test asserting many unrelated things.
+```
