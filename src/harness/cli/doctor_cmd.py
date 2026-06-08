@@ -333,9 +333,8 @@ def doctor(verbose: bool) -> None:
 
     console.print()
     if errors > 0:
-        console.print(
-            f"[red bold]{m.doctor_summary_errors.format(errors=errors, warnings=warnings)}[/red bold]"
-        )
+        summary = m.doctor_summary_errors.format(errors=errors, warnings=warnings)
+        console.print(f"[red bold]{summary}[/red bold]")
         raise SystemExit(1)
     elif warnings > 0:
         console.print(

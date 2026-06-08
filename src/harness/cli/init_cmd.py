@@ -437,7 +437,12 @@ def init(
         if not force:
             return
 
-    agent_list = list(agents) if agents else (_prompt_agents(m) if _is_interactive() else ["claude"])
+    if agents:
+        agent_list = list(agents)
+    elif _is_interactive():
+        agent_list = _prompt_agents(m)
+    else:
+        agent_list = ["claude"]
     script_shell = script or _detect_shell()
     resolved_lang = lang or _detect_lang(project_root)
 
