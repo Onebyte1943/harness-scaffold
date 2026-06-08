@@ -108,4 +108,3 @@ class ScaffoldEngine:
         except TemplateNotFound:
             return False
         return True
-

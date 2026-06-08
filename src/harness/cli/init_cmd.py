@@ -338,9 +338,7 @@ def _print_summary(config: HarnessConfig) -> None:
     next_steps = "\n".join(
         f"  {line}"
         for line in (
-            m.next_step_constitution.replace(
-                "/hx-constitution", "[cyan]/hx-constitution[/cyan]"
-            ),
+            m.next_step_constitution.replace("/hx-constitution", "[cyan]/hx-constitution[/cyan]"),
             m.next_step_baseline.replace("/hx-baseline", "[cyan]/hx-baseline[/cyan]"),
             m.next_step_next.replace("/hx-next", "[cyan]/hx-next[/cyan]"),
             m.next_step_doctor.replace("harness doctor", "[cyan]harness doctor[/cyan]"),
@@ -494,6 +492,4 @@ def init(
     if not dry_run:
         _print_summary(config)
     else:
-        console.print(
-            f"\n[cyan]{m.dry_run_count.format(n=len(engine.generated_files))}[/cyan]"
-        )
+        console.print(f"\n[cyan]{m.dry_run_count.format(n=len(engine.generated_files))}[/cyan]")

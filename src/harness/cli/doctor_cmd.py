@@ -337,8 +337,6 @@ def doctor(verbose: bool) -> None:
         console.print(f"[red bold]{summary}[/red bold]")
         raise SystemExit(1)
     elif warnings > 0:
-        console.print(
-            f"[green]{m.doctor_summary_warnings.format(warnings=warnings)}[/green]"
-        )
+        console.print(f"[green]{m.doctor_summary_warnings.format(warnings=warnings)}[/green]")
     else:
         console.print(f"[green bold]{m.doctor_all_passed}[/green bold]")

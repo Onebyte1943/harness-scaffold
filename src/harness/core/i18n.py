@@ -123,15 +123,11 @@ _EN = Messages(
     summary_presets="Presets",
     next_steps_title="Next steps:",
     next_steps_panel_title="W0 Bootstrap",
-    next_step_constitution=(
-        "1. Run /hx-constitution to synthesize engineering principles"
-    ),
+    next_step_constitution=("1. Run /hx-constitution to synthesize engineering principles"),
     next_step_baseline="2. Run /hx-baseline to build the 7-doc knowledge base",
     next_step_next="3. Run /hx-next when in doubt about the next move",
     next_step_doctor="4. Run harness doctor to verify setup",
-    doctor_not_in_project=(
-        "Not in a harness project. Run [cyan]harness init[/cyan] first."
-    ),
+    doctor_not_in_project=("Not in a harness project. Run [cyan]harness init[/cyan] first."),
     doctor_header="Harness Doctor — checking {name}",
     doctor_table_status="Status",
     doctor_table_item="Item",
@@ -161,8 +157,7 @@ _ZH = Messages(
     git_unavailable="未找到 git,跳过 git init",
     gitignore_appended="已追加 .gitignore",
     already_initialized=(
-        "Harness 已初始化。用 --agent 追加新的终端适配器,或用 "
-        "--force 重新渲染中枢。"
+        "Harness 已初始化。用 --agent 追加新的终端适配器,或用 --force 重新渲染中枢。"
     ),
     adding_agents="新增 agent: {agents}",
     all_agents_already="所有请求的 agent 都已配置。",
@@ -185,9 +180,7 @@ _ZH = Messages(
     next_step_baseline="2. 运行 /hx-baseline 构建 7 篇核心知识库文档",
     next_step_next="3. 拿不准下一步时,运行 /hx-next 让路由器推荐",
     next_step_doctor="4. 运行 harness doctor 自检",
-    doctor_not_in_project=(
-        "当前目录不在 harness 项目中。请先运行 [cyan]harness init[/cyan]。"
-    ),
+    doctor_not_in_project=("当前目录不在 harness 项目中。请先运行 [cyan]harness init[/cyan]。"),
     doctor_header="Harness Doctor —— 正在检查 {name}",
     doctor_table_status="状态",
     doctor_table_item="项",
