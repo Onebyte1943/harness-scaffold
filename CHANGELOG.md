@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-06-08
+
+### Fixed
+
+- Two `E501` long lines (`doctor_cmd.py:337`, `init_cmd.py:440`) that
+  slipped past local checks but failed CI lint on the 0.2.0 push.
+- `ruff format` drift in `doctor_cmd.py`, `init_cmd.py`, `i18n.py`,
+  `scaffold.py` — auto-reformatted to match repo style.
+
+No behavior change vs 0.2.0 — pure source-hygiene release so the PyPI
+artifact matches the post-0.2.0 main branch.
+
 ## [0.2.0] - 2026-06-08
 
 A pivot on how the scaffold handles multilingual output. Instead of
