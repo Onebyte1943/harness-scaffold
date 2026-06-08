@@ -1,10 +1,11 @@
 """Runtime message localization for CLI output.
 
-The scaffold engine localizes template *artifacts* via `render_localized`
-(see `core.scaffold`). This module covers the orthogonal concern of
-localizing the CLI's own runtime strings — progress prints, the init
-summary table, the `Next steps` panel, doctor diagnostics, and the
-interactive `questionary` prompt.
+Scaffold templates are English-only — deliverable narrative language is
+chosen at `/hx-*` runtime by the agent, per the Output Language Contract
+in AGENTS.md. This module covers the orthogonal concern of localizing
+the CLI's own runtime strings — progress prints, the init summary
+table, the `Next steps` panel, doctor diagnostics, and the interactive
+`questionary` prompt.
 
 Design constraints (per project guidance):
 - Two locales only: `zh` and `en`. `zh` is the default.

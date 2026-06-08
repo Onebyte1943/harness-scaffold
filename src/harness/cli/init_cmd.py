@@ -139,13 +139,12 @@ def _generate_brain(
     root = config.project_root
     harness = root / HARNESS_DIR
 
-    engine.render_localized(
-        "harness/registry",
+    engine.render_file(
+        "harness/registry.toml.j2",
         harness / "registry.toml",
         context,
         force=force,
         dry_run=dry_run,
-        suffix=".toml.j2",
     )
     engine.render_file(
         "harness/config.toml.j2",
@@ -156,25 +155,24 @@ def _generate_brain(
     )
 
     for pb_filename in PLAYBOOK_FILES.values():
-        template_stem = f"harness/playbooks/{pb_filename}"
-        engine.render_localized(
-            template_stem,
+        engine.render_file(
+            f"harness/playbooks/{pb_filename}.md.j2",
             harness / "playbooks" / f"{pb_filename}.md",
             context,
             force=force,
             dry_run=dry_run,
         )
 
-    engine.render_localized(
-        "harness/principle-packs/generic",
+    engine.render_file(
+        "harness/principle-packs/generic.md.j2",
         harness / "principle-packs" / "generic.md",
         context,
         force=force,
         dry_run=dry_run,
     )
 
-    engine.render_localized(
-        "harness/evals/README",
+    engine.render_file(
+        "harness/evals/README.md.j2",
         harness / "evals" / "README.md",
         context,
         force=force,
@@ -187,24 +185,22 @@ def _generate_brain(
         engine.ensure_dir(harness / sub, dry_run=dry_run)
 
     script_shell = config.script_shell
-    script_stems = [
-        (f"harness/scripts/{script_shell}/verify", f"scripts/{script_shell}/verify.sh"),
+    script_templates = [
+        (f"harness/scripts/{script_shell}/verify.sh.j2", f"scripts/{script_shell}/verify.sh"),
         (
-            f"harness/scripts/{script_shell}/lib/common",
+            f"harness/scripts/{script_shell}/lib/common.sh.j2",
             f"scripts/{script_shell}/lib/common.sh",
         ),
     ]
-    for stem, out in script_stems:
-        # Each stem must ship both .zh.sh.j2 and .en.sh.j2 siblings.
-        if engine.has_template(f"{stem}.{config.output_lang}.sh.j2"):
-            engine.render_localized(
-                stem,
+    for tmpl, out in script_templates:
+        if engine.has_template(tmpl):
+            engine.render_file(
+                tmpl,
                 harness / out,
                 context,
                 force=force,
                 dry_run=dry_run,
                 executable=True,
-                suffix=".sh.j2",
             )
 
 
@@ -225,30 +221,28 @@ def _generate_shared(
     console.print(f"\n[bold]{m.generating_shared}[/bold]")
     root = config.project_root
 
-    engine.render_localized(
-        "shared/AGENTS",
+    engine.render_file(
+        "shared/AGENTS.md.j2",
         root / "AGENTS.md",
         context,
         force=force,
         dry_run=dry_run,
     )
 
-    engine.render_localized(
-        "shared/gitlab-ci",
+    engine.render_file(
+        "shared/gitlab-ci.yml.j2",
         root / GITLAB_CI_CONFIG,
         context,
         force=force,
         dry_run=dry_run,
-        suffix=".yml.j2",
     )
 
-    engine.render_localized(
-        "shared/pre-commit-config",
+    engine.render_file(
+        "shared/pre-commit-config.yaml.j2",
         root / PRE_COMMIT_CONFIG,
         context,
         force=force,
         dry_run=dry_run,
-        suffix=".yaml.j2",
     )
 
     # .agent/ holds .agent/progress.md once /hx-implement first writes there.
@@ -304,24 +298,20 @@ def _init_git(
     except (subprocess.CalledProcessError, FileNotFoundError):
         console.print(f"  [yellow]warning[/yellow] {m.git_unavailable}")
 
-    output_lang = context.get("output_lang", "en")
-    gitignore_tmpl = f"shared/gitignore.{output_lang}.j2"
-    if not engine.has_template(gitignore_tmpl):
-        gitignore_tmpl = "shared/gitignore.en.j2"  # fallback
-    if engine.has_template(gitignore_tmpl):
+    if engine.has_template("shared/gitignore.j2"):
         gitignore_path = project_root / ".gitignore"
         if gitignore_path.exists():
             existing = gitignore_path.read_text()
             from jinja2 import Environment, FileSystemLoader
 
             env = Environment(loader=FileSystemLoader(str(_get_template_dir())))
-            tmpl = env.get_template(gitignore_tmpl)
+            tmpl = env.get_template("shared/gitignore.j2")
             harness_block = tmpl.render(**context)
             if "# harness" not in existing:
                 gitignore_path.write_text(existing.rstrip() + "\n\n" + harness_block)
                 console.print(f"  [green]{m.gitignore_appended}[/green]")
         else:
-            engine.render_file(gitignore_tmpl, gitignore_path, context)
+            engine.render_file("shared/gitignore.j2", gitignore_path, context)
 
 
 def _print_summary(config: HarnessConfig) -> None:

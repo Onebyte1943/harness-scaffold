@@ -136,22 +136,29 @@ class TestInit:
         assert "secure" in cfg
 
     def test_init_output_lang_default_zh(self, tmp_path: Path) -> None:
+        """Default output_lang is zh; templates stay English; AGENTS.md
+        carries the contract so /hx-* agents render deliverables in zh
+        at runtime."""
         runner = CliRunner()
         result = runner.invoke(cli, ["init", str(tmp_path), "--agent", "claude", "--no-git"])
         assert result.exit_code == 0
         cfg = (tmp_path / ".harness" / "config.toml").read_text()
         assert 'output_lang = "zh"' in cfg
-        # zh narrative renders in playbook bodies
+        # Scaffold artifacts are single-source-of-truth English.
         verify_pb = (tmp_path / ".harness" / "playbooks" / "41-verify.md").read_text()
-        assert "单一确定性传感器" in verify_pb
-        # but section headings + Provenance stay English
         assert "## Purpose" in verify_pb
-        assert "## Prerequisites" in verify_pb
         assert "> - Authoritative paradigm:" in verify_pb
-        assert "> - Investigation protocol:" in verify_pb
-        assert "> - Output form:" in verify_pb
+        # AGENTS.md carries the Output Language Contract and the active
+        # output_lang value the agent must honor at runtime.
+        agents_md = (tmp_path / "AGENTS.md").read_text()
+        assert "## Output Language Contract" in agents_md
+        assert "**`zh`**" in agents_md
+        # No translation happens in templates — Chinese narrative only
+        # appears later, written by /hx-* agents into deliverables.
+        assert "单一确定性传感器" not in verify_pb
 
     def test_init_output_lang_en(self, tmp_path: Path) -> None:
+        """--output-lang en flips the contract; templates are unchanged."""
         runner = CliRunner()
         result = runner.invoke(
             cli,
@@ -168,11 +175,12 @@ class TestInit:
         assert result.exit_code == 0
         cfg = (tmp_path / ".harness" / "config.toml").read_text()
         assert 'output_lang = "en"' in cfg
+        agents_md = (tmp_path / "AGENTS.md").read_text()
+        assert "**`en`**" in agents_md
+        # Verify the same playbook content as zh case — templates do
+        # not depend on output_lang.
         verify_pb = (tmp_path / ".harness" / "playbooks" / "41-verify.md").read_text()
-        assert "The single deterministic sensor" in verify_pb
-        # No Chinese narrative in the en render
-        assert "单一确定性传感器" not in verify_pb
-        # Provenance still English (always)
+        assert "## Purpose" in verify_pb
         assert "> - Authoritative paradigm:" in verify_pb
 
     def test_init_output_lang_invalid(self, tmp_path: Path) -> None:
@@ -192,8 +200,11 @@ class TestInit:
         assert result.exit_code != 0
         assert "Invalid value" in result.output or "invalid choice" in result.output.lower()
 
-    def test_init_output_lang_propagates_to_adapters(self, tmp_path: Path) -> None:
-        """The claude adapter (CLAUDE.md + slash commands) honors output_lang."""
+    def test_init_adapter_commands_point_to_contract(self, tmp_path: Path) -> None:
+        """Adapter slash-command files are English-only, but each one
+        explicitly references the Output Language Contract in AGENTS.md
+        so the executing agent always picks up the deliverable
+        language."""
         runner = CliRunner()
         runner.invoke(
             cli,
@@ -207,17 +218,14 @@ class TestInit:
                 "--no-git",
             ],
         )
-        # zh by default — slash command body in Chinese
         verify_cmd = (tmp_path / ".claude" / "commands" / "hx-verify.md").read_text()
-        assert "执行" in verify_cmd or "playbook" in verify_cmd  # zh body
-        assert "## Instructions" in verify_cmd  # heading stays English
-        # Codex slash command also zh
+        assert "## Instructions" in verify_cmd
+        assert "Output Language Contract" in verify_cmd
         codex_verify = (tmp_path / ".codex" / "commands" / "hx-verify.md").read_text()
-        assert "执行" in codex_verify or "playbook" in codex_verify
-        # CLAUDE.md: Provenance always English, narrative in zh
+        assert "Output Language Contract" in codex_verify
+        # CLAUDE.md imports AGENTS.md so the contract reaches Claude.
         claude_md = (tmp_path / "CLAUDE.md").read_text()
-        assert "> - Authoritative paradigm:" in claude_md
-        assert "共享 agent 上下文" in claude_md
+        assert "@AGENTS.md" in claude_md
 
     def test_init_constitution_lazy(self, tmp_path: Path) -> None:
         """L-RULE is lazy: constitution.md only appears after /hx-constitution."""

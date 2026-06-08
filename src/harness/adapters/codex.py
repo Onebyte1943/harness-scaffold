@@ -15,8 +15,10 @@ from harness.core.layout import (
 from harness.core.registry import AdapterSpec
 from harness.core.scaffold import ScaffoldEngine
 
-# Codex uses the same /hx-<cmd> surface; descriptions kept terse.
-_SKILL_DESCRIPTIONS_EN: dict[str, str] = {
+# Codex uses the same /hx-<cmd> surface; descriptions kept terse. English-only:
+# agent contract files have a single source of truth; deliverable language is
+# chosen at /hx-* runtime per the Output Language Contract in AGENTS.md.
+_SKILL_DESCRIPTIONS: dict[str, str] = {
     "constitution": "Synthesize the project constitution",
     "baseline": "Build the 7-doc knowledge base",
     "next": "Route the next move (suggest flow + next command)",
@@ -33,38 +35,16 @@ _SKILL_DESCRIPTIONS_EN: dict[str, str] = {
     "doctor": "Harness self-check",
 }
 
-_SKILL_DESCRIPTIONS_ZH: dict[str, str] = {
-    "constitution": "生成项目宪章",
-    "baseline": "构建 7 篇核心知识库文档",
-    "next": "路由下一步动作 (推荐 flow 与下一个命令)",
-    "propose": "在 specs/<NNN>-<slug>/ 起草变更提案",
-    "clarify": "多轮结构化澄清",
-    "design": "产出带稳定 ID 的 AI 友好设计文档",
-    "plan": "输出实施计划与 ADR",
-    "tasks": "把设计拆解为 TDD 顺序的任务",
-    "analyze": "跨工件一致性检查",
-    "implement": "一次执行一个任务,TDD 优先",
-    "verify": "单一确定性传感器:lint + types + tests + honesty",
-    "review": "正确性/一致性 + Google/阿里代码评审",
-    "archive": "合并后刷新知识 + 跑 reference validator",
-    "doctor": "Harness 自检",
-}
 
-
-def _skill_descriptions(output_lang: str) -> dict[str, str]:
-    return _SKILL_DESCRIPTIONS_ZH if output_lang == "zh" else _SKILL_DESCRIPTIONS_EN
-
-
-def _command_context(command: str, output_lang: str) -> dict[str, Any]:
+def _command_context(command: str) -> dict[str, Any]:
     return {
         "command": command,
-        "description": _skill_descriptions(output_lang)[command],
+        "description": _SKILL_DESCRIPTIONS[command],
         "playbook_path": playbook_path(command),
         "constitution_path": CONSTITUTION_PATH,
         "specs_dir": SPECS_DIR,
         "harness_dir": HARNESS_DIR,
         "agent_dir": AGENT_DIR,
-        "output_lang": output_lang,
     }
 
 
@@ -83,15 +63,14 @@ class CodexAdapter(AdapterBase):
         dry_run: bool = False,
     ) -> list[Path]:
         generated: list[Path] = []
-        output_lang = context.get("output_lang", "en")
 
         commands_dir = project_root / ".codex" / "commands"
         for cmd in HX_COMMANDS:
             cmd_path = commands_dir / f"hx-{cmd}.md"
-            if self.engine.render_localized(
-                "adapters/codex/command",
+            if self.engine.render_file(
+                "adapters/codex/command.md.j2",
                 cmd_path,
-                _command_context(cmd, output_lang),
+                _command_context(cmd),
                 force=force,
                 dry_run=dry_run,
             ):

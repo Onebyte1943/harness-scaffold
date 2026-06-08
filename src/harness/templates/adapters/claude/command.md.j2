@@ -12,6 +12,6 @@ Execute the **{{ command }}** playbook at `{{ playbook_path }}`.
 
 1. Read `{{ playbook_path }}` from the project root.
 2. Follow every step in the playbook in order; respect its Gate.
-3. Obey every `[enforceable]` clause in `{{ constitution_path }}` and the boundaries declared in `AGENTS.md`.
+3. Obey every `[enforceable]` clause in `{{ constitution_path }}`, the boundaries declared in `AGENTS.md`, and the **Output Language Contract** at the top of `AGENTS.md` (decides the narrative language of every deliverable you write).
 4. Write outputs to the locations the playbook specifies (spec artifacts under `{{ specs_dir }}/`, knowledge under `{{ harness_dir }}/knowledge/`, progress in `{{ agent_dir }}/progress.md`).
 5. Report completion and any blockers; do not silently skip a Gate.

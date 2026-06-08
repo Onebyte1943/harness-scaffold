@@ -9,8 +9,56 @@
 
 > Provenance (T13)
 > - Authoritative paradigm: OpenAI / Anthropic multi-agent shared entry point + spec-kit AGENTS.md — only load-bearing semantic rules; anything a tool can already enforce stays in tool config, not here
-> - Investigation protocol: carry boundaries (Always / Ask / Never), MR & commit norms, and security rules; defer everything else to [[constitution]] and [[knowledge/conventions]]; keep the file < 32 KiB and signal-dense
-> - Output form: single lean entry file with fixed sections — Overview · Stack · Setup · Style · Testing · Architecture · Boundaries · MR & Commit · Security · SDD-at-a-glance · Where things live · References
+> - Investigation protocol: carry the Output Language Contract first (decides deliverable narrative language for every `/hx-*` run), then boundaries (Always / Ask / Never), MR & commit norms, and security rules; defer everything else to [[constitution]] and [[knowledge/conventions]]; keep the file < 32 KiB and signal-dense
+> - Output form: single lean entry file with fixed sections — Output Language · Overview · Stack · Setup · Style · Testing · Architecture · Boundaries · MR & Commit · Security · SDD-at-a-glance · Where things live · References
+
+---
+
+## Output Language Contract
+
+The project's preferred narrative language is `output_lang` in
+`.harness/config.toml` (this project: **`{{ output_lang }}`**;
+allowed values: `en`, `zh`). Every `/hx-*` command MUST honor it
+when producing **deliverables** that humans on this project will
+read — `specs/<NNN>-<slug>/*.md`, `.harness/knowledge/**`,
+`.harness/memory/constitution.md`, `.agent/progress.md`, review
+reports, ADRs, and any prose written *into* an existing file.
+
+The following MUST stay English regardless of `output_lang` — they
+are the AI-coding contract that `/hx-review`, `/hx-analyze`,
+`/hx-doctor`, `/hx-implement` pattern-match against. Translating
+them silently degrades AI accuracy:
+
+- Markdown headings (`#`, `##`, `###`, …) and YAML frontmatter
+- `> Provenance` blocks (Authoritative paradigm / Investigation
+  protocol / Output form)
+- RFC 2119 keywords: **MUST**, **MUST NOT**, **SHOULD**,
+  **SHOULD NOT**, **MAY**
+- Stable IDs: REQ-NNN, NFR-NNN, IF-NNN, DEC-NNN, RISK-NNN, Q-NNN,
+  ADR-NNNN, P1–P5, P-G-N, T1–T16, US-N, T-N.M
+- Methodology and pattern names: Saga, TCC, Outbox, Redlock,
+  fencing token, C4, arc42, MADR, BIZBOK, 12-Factor, OWASP,
+  AIP, AAA (Arrange · Act · Assert), Expand → Contract, Diátaxis
+- Code identifiers, file paths, command names, tool names, flag
+  values (e.g. `quick` / `standard` / `full` / `epic`,
+  `enforceable` / `inferential`, `ship` / `fix-then-ship`)
+- Structural labels inside artifact bodies — `Rule:`, `Why:`,
+  `Compliance signal:`, `Project practice:`, `Industry:`,
+  `Pitfalls:`, `GOOD`, `BAD`, `Steps`, `Anti-patterns`,
+  `Skeleton`, `When to use what`, `Decision order`
+- The verbatim content of any ``` fenced code block in playbook
+  seeds — copy the seed exactly, do not translate inside fences
+- Section names referenced cross-artifact (e.g.
+  `## CORRECTNESS & CONSISTENCY (must-fix)`,
+  `## GAP (must fill before implement)`,
+  `## CONFLICT (must resolve before implement)`)
+
+Out of doubt: prefer English. If a term shows up in the project's
+`.harness/knowledge/glossary.md` with a Chinese gloss, use that
+gloss; otherwise leave the English form.
+
+This contract overrides any conflicting "translate everything"
+instinct from the agent's general training.
 
 ---
 

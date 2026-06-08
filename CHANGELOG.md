@@ -6,6 +6,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Architecture pivot — single-source-of-truth English templates with
+  runtime-decided deliverable language.** Templates no longer ship as
+  `.zh.*.j2` / `.en.*.j2` pairs; `harness init` always renders the same
+  English playbooks, AGENTS.md, CLAUDE.md, slash-command files,
+  `verify.sh`, `registry.toml`, etc. The `output_lang` config field is
+  persisted to `.harness/config.toml` and consumed at `/hx-*` runtime
+  by the AI agent — the agent reads the new **Output Language
+  Contract** section at the top of AGENTS.md and writes deliverables
+  (specs/, knowledge/, constitution.md, progress.md, review reports,
+  ADRs) in `output_lang`, while keeping headings, frontmatter,
+  Provenance, RFC 2119 keywords, stable IDs (REQ/DEC/T/P), methodology
+  names (Saga, TCC, Outbox, Redlock, fencing token, …), code
+  identifiers, file paths, and ``` fenced seed contents in English.
+- Why: prevents translation drift, eliminates per-locale maintenance
+  cost, and protects AI pattern-match accuracy (the agent's contract
+  surface stays in one canonical language). Adding new output
+  languages now requires zero scaffold work — only an addition to
+  `i18n.py` for CLI runtime strings.
+- CLI runtime output (init progress / summary table / Next steps panel
+  / doctor diagnostics) is still localized per `--output-lang` via
+  `harness.core.i18n.messages()`. This concern is orthogonal to the
+  template layer.
+
+### Removed
+
+- All `.zh.*.j2` template variants (~22 files).
+- `ScaffoldEngine.render_localized()` — no remaining callers; the
+  public scaffold API is now `render_file` / `render_static` /
+  `ensure_dir` only.
+- `tests/templates/test_localization_parity.py` and
+  `tests/templates/test_seed_contract.py` — both assumed zh/en
+  template pairs that no longer exist.
+- Per-locale skill-description dicts in claude / codex adapters
+  (`_SKILL_DESCRIPTIONS_ZH`).
+
 ## [0.1.0] - 2026-06-07
 
 Initial public release on PyPI as **`harness-scaffold`**.

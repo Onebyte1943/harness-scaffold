@@ -17,10 +17,11 @@ from harness.core.registry import AdapterSpec
 from harness.core.scaffold import ScaffoldEngine
 
 # Short, one-line `description:` per /hx-<cmd>. Keep terse — Claude Code shows
-# them in the command picker. Data table (not narrative); a future move to
-# locales/skill_descriptions/{lang}.yaml would let translators edit without
-# touching Python.
-_SKILL_DESCRIPTIONS_EN: dict[str, str] = {
+# them in the command picker. English-only: the slash command files are part
+# of the agent contract layer and must stay in a single source-of-truth
+# language; deliverable narrative language is decided at /hx-* runtime per
+# the Output Language Contract in AGENTS.md.
+_SKILL_DESCRIPTIONS: dict[str, str] = {
     "constitution": (
         "Synthesize the project constitution from universal SDD principles, "
         "principle packs, and the team's de-facto patterns"
@@ -69,63 +70,25 @@ _SKILL_DESCRIPTIONS_EN: dict[str, str] = {
     ),
 }
 
-_SKILL_DESCRIPTIONS_ZH: dict[str, str] = {
-    "constitution": (
-        "综合通用 SDD 原则、principle packs,以及团队从代码库沉淀的事实模式,生成项目宪章"
-    ),
-    "baseline": (
-        "构建 7 篇核心知识库文档 (product、architecture、tech-stack、business、"
-        "conventions、glossary、setup-and-verify,以及 how-to/)"
-    ),
-    "next": ("路由下一步动作:根据当前状态推荐 flow 等级与下一个 /hx-<cmd> —— 不写入任何文件"),
-    "propose": ("在 specs/<NNN>-<slug>/ 起草变更提案 (问题、备选方案、风险、验收)"),
-    "clarify": ("多轮结构化澄清 —— 在设计前补齐缺失需求"),
-    "design": ("产出 AI 友好的设计文档,带稳定 ID (REQ/NFR/IF/DEC/RISK/Q) 与追溯矩阵"),
-    "plan": ("输出实施计划,并把 ADR 落到 .harness/knowledge/adr/"),
-    "tasks": ("把设计拆解成 TDD 顺序、按用户故事分组的任务,带 [P] 并行标记"),
-    "analyze": (
-        "跨工件一致性检查 (constitution ↔ knowledge ↔ "
-        "proposal ↔ design ↔ tasks) —— 用作 implement 的 gate"
-    ),
-    "implement": ("一次执行一个任务,TDD 优先,遇到上游缺陷支持回滚 / 熔断"),
-    "verify": (
-        "单一确定性传感器:lint + typecheck + tests + test honesty "
-        "(与 hook、pre-commit、CI 共用同一脚本)"
-    ),
-    "review": (
-        "双重评审 —— 对照 proposal/design 检查正确性与一致性,叠加 Google + 阿里代码评审维度"
-    ),
-    "archive": (
-        "合并后:刷新受影响的知识文档,跑 reference validator,在 .agent/progress.md 追加一行"
-    ),
-    "doctor": ("Harness 自检:rule↔guardrail 同步、预算、漂移、死规则、eval 回归"),
-}
 
-
-def _skill_descriptions(output_lang: str) -> dict[str, str]:
-    return _SKILL_DESCRIPTIONS_ZH if output_lang == "zh" else _SKILL_DESCRIPTIONS_EN
-
-
-def _command_context(command: str, output_lang: str) -> dict[str, Any]:
+def _command_context(command: str) -> dict[str, Any]:
     """Context for rendering one /hx-<cmd> slash-command file."""
     return {
         "command": command,
-        "description": _skill_descriptions(output_lang)[command],
+        "description": _SKILL_DESCRIPTIONS[command],
         "playbook_path": playbook_path(command),
         "constitution_path": CONSTITUTION_PATH,
         "specs_dir": SPECS_DIR,
         "harness_dir": HARNESS_DIR,
         "agent_dir": AGENT_DIR,
-        "output_lang": output_lang,
     }
 
 
-def _claude_md_context(output_lang: str) -> dict[str, Any]:
+def _claude_md_context() -> dict[str, Any]:
     return {
         "hx_commands": HX_COMMANDS,
-        "skill_descriptions": _skill_descriptions(output_lang),
+        "skill_descriptions": _SKILL_DESCRIPTIONS,
         "constitution_path": CONSTITUTION_PATH,
-        "output_lang": output_lang,
     }
 
 
@@ -163,13 +126,12 @@ class ClaudeAdapter(AdapterBase):
         dry_run: bool = False,
     ) -> list[Path]:
         generated: list[Path] = []
-        output_lang = context.get("output_lang", "en")
 
         claude_md_path = project_root / "CLAUDE.md"
-        if self.engine.render_localized(
-            "adapters/claude/CLAUDE",
+        if self.engine.render_file(
+            "adapters/claude/CLAUDE.md.j2",
             claude_md_path,
-            _claude_md_context(output_lang),
+            _claude_md_context(),
             force=force,
             dry_run=dry_run,
         ):
@@ -178,10 +140,10 @@ class ClaudeAdapter(AdapterBase):
         commands_dir = project_root / ".claude" / "commands"
         for cmd in HX_COMMANDS:
             cmd_path = commands_dir / f"hx-{cmd}.md"
-            if self.engine.render_localized(
-                "adapters/claude/command",
+            if self.engine.render_file(
+                "adapters/claude/command.md.j2",
                 cmd_path,
-                _command_context(cmd, output_lang),
+                _command_context(cmd),
                 force=force,
                 dry_run=dry_run,
             ):
