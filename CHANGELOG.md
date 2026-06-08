@@ -6,34 +6,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-08
+
+A pivot on how the scaffold handles multilingual output. Instead of
+generating per-locale template variants at `harness init` time, the
+scaffold now produces a single English source-of-truth and lets each
+`/hx-*` agent decide deliverable narrative language at runtime,
+guided by an explicit Output Language Contract.
+
+### Added
+
+- **`harness.core.i18n`** — runtime message tables (zh / en) covering
+  every CLI-emitted string: `harness init` progress prints, summary
+  table headings and rows, the "Next steps" panel, the interactive
+  `questionary` agent picker, and `harness doctor` diagnostics. CLI
+  output now honors `--output-lang` (default `zh`) and `doctor`
+  reads it from `.harness/config.toml`.
+- **`## Output Language Contract`** — new top-of-AGENTS.md section,
+  rendered with the live `output_lang` value, that tells every
+  `/hx-*` agent how to write deliverables: prose follows
+  `output_lang`; headings, frontmatter, Provenance blocks, RFC 2119
+  keywords (MUST / MUST NOT / SHOULD / SHOULD NOT / MAY), stable IDs
+  (REQ-NNN, DEC-NNN, ADR-NNNN, P1–P5, T1–T16, US-N, …), methodology
+  names (Saga, TCC, Outbox, Redlock, fencing token, C4, arc42, MADR,
+  BIZBOK, 12-Factor, OWASP, AIP, AAA, Expand → Contract, Diátaxis),
+  code identifiers, file paths, structural labels, and the verbatim
+  content of any ``` fenced seed block stay English.
+- Adapter slash-command files (Claude + Codex) now explicitly point
+  to the Output Language Contract so it is re-loaded on every
+  `/hx-*` invocation.
+
 ### Changed
 
-- **Architecture pivot — single-source-of-truth English templates with
-  runtime-decided deliverable language.** Templates no longer ship as
-  `.zh.*.j2` / `.en.*.j2` pairs; `harness init` always renders the same
-  English playbooks, AGENTS.md, CLAUDE.md, slash-command files,
-  `verify.sh`, `registry.toml`, etc. The `output_lang` config field is
-  persisted to `.harness/config.toml` and consumed at `/hx-*` runtime
-  by the AI agent — the agent reads the new **Output Language
-  Contract** section at the top of AGENTS.md and writes deliverables
-  (specs/, knowledge/, constitution.md, progress.md, review reports,
-  ADRs) in `output_lang`, while keeping headings, frontmatter,
-  Provenance, RFC 2119 keywords, stable IDs (REQ/DEC/T/P), methodology
-  names (Saga, TCC, Outbox, Redlock, fencing token, …), code
-  identifiers, file paths, and ``` fenced seed contents in English.
-- Why: prevents translation drift, eliminates per-locale maintenance
-  cost, and protects AI pattern-match accuracy (the agent's contract
-  surface stays in one canonical language). Adding new output
-  languages now requires zero scaffold work — only an addition to
-  `i18n.py` for CLI runtime strings.
-- CLI runtime output (init progress / summary table / Next steps panel
-  / doctor diagnostics) is still localized per `--output-lang` via
-  `harness.core.i18n.messages()`. This concern is orthogonal to the
-  template layer.
+- **Templates collapsed to single English source.** Removed the
+  `.zh.*.j2` / `.en.*.j2` template pairing; each artifact now has one
+  canonical template (`playbooks/*.md.j2`, `AGENTS.md.j2`, etc.).
+  Eliminates drift between language variants and protects AI
+  pattern-match accuracy — the agent's contract surface is one
+  language by construction.
+- Adding a new output language now requires zero scaffold work; only
+  add a `Messages` literal in `i18n.py` for CLI runtime strings.
 
 ### Removed
 
-- All `.zh.*.j2` template variants (~22 files).
+- ~22 `.zh.*.j2` template variants (playbooks, principle pack, evals
+  README, AGENTS.md, CLAUDE.md, slash commands, scripts, CI / TOML /
+  gitignore).
 - `ScaffoldEngine.render_localized()` — no remaining callers; the
   public scaffold API is now `render_file` / `render_static` /
   `ensure_dir` only.
@@ -42,6 +60,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   template pairs that no longer exist.
 - Per-locale skill-description dicts in claude / codex adapters
   (`_SKILL_DESCRIPTIONS_ZH`).
+
+### Migration notes
+
+- Projects scaffolded with 0.1.0 keep their existing files. To pick
+  up the new English templates + Output Language Contract, run
+  `harness init --force` in the project root.
+- The `--output-lang` flag and `.harness/config.toml#output_lang`
+  field are unchanged on the wire. What changed is *when* they're
+  consumed: previously at scaffold time, now at `/hx-*` runtime.
+- Net diff: −3,552 / +171 lines.
 
 ## [0.1.0] - 2026-06-07
 
