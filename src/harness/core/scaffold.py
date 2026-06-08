@@ -118,20 +118,28 @@ class ScaffoldEngine:
         force: bool = False,
         dry_run: bool = False,
         executable: bool = False,
+        suffix: str = ".md.j2",
     ) -> bool:
         """Render a translatable template.
 
         `template_stem` is the path without the language + extension suffix —
         e.g. `harness/playbooks/41-verify`. The engine resolves it to
-        `<stem>.<output_lang>.md.j2` based on context["output_lang"]. Raises
-        TemplateNotFound if neither variant exists.
+        `<stem>.<output_lang><suffix>` based on context["output_lang"].
+        The default `suffix` is `.md.j2` (Markdown playbooks / docs); pass
+        a different suffix for shell scripts (`.sh.j2`), YAML configs
+        (`.yml.j2`), TOML (`.toml.j2`), etc.
+
+        Raises FileNotFoundError if the requested-language variant is
+        missing. The contract is that every translatable template ships
+        both a `.zh<suffix>` and an `.en<suffix>` sibling.
         """
         output_lang = context.get("output_lang", "en")
-        localized = f"{template_stem}.{output_lang}.md.j2"
+        localized = f"{template_stem}.{output_lang}{suffix}"
         if not self.has_template(localized):
             raise FileNotFoundError(
                 f"Localized template missing: {localized}. "
-                f"Every translatable template must ship a .zh.md.j2 and a .en.md.j2 sibling."
+                f"Every translatable template must ship a .zh{suffix} and "
+                f"a .en{suffix} sibling."
             )
         return self.render_file(
             localized,

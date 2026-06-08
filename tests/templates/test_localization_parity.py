@@ -115,8 +115,23 @@ def env() -> Environment:
 
 
 def _headings(rendered: str) -> list[str]:
-    """Extract the sequence of `## ` / `### ` / `# ` markdown headings."""
-    return re.findall(r"^#{1,6}\s+.*$", rendered, flags=re.MULTILINE)
+    """Extract the sequence of `## ` / `### ` / `# ` markdown headings,
+    skipping lines that sit inside ``` fenced code blocks. The parity
+    contract covers the playbook's own outer structure — embedded
+    code-block content (e.g. seed-template literals) often translates
+    its placeholder text alongside the rest of the narrative, and that
+    is intentional, not drift."""
+    headings: list[str] = []
+    in_fence = False
+    for line in rendered.splitlines():
+        if line.lstrip().startswith("```"):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        if re.match(r"^#{1,6}\s+", line):
+            headings.append(line)
+    return headings
 
 
 def _frontmatter(rendered: str) -> str:

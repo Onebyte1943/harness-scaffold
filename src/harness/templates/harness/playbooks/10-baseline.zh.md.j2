@@ -264,9 +264,17 @@ flow: [standard, full, epic]
 
 ## Appendix A — Knowledge base seed (T2)
 
-引导这 7 个文件时,直接照抄下列模板。所有 heading 保留英文;正文跟随
-项目语言。每个种子都带一个 `> Provenance` 段落 —— 不要删;它告诉下一位
-贡献者这份文档背后的权威与应遵循的调查协议。
+引导这 7 个文件时,**直接照抄下列模板** (heading、`Rule:` / `Project
+practice:` / `Industry:` / `Pitfalls:` 等结构 label、`how-to/*` 配方的
+`Steps` / `Anti-patterns` / `Skeleton` 内容均保留英文 —— 这些是
+`/hx-review`、`/hx-doctor`、`/hx-implement` 进行 grep 与模式匹配的
+硬契约,翻译会破坏 AI 编码准确性)。
+
+模板中所有 `⟨…⟩` 占位符由你填入项目实际内容,这部分**可以用项目
+自身的语言**;但占位符之外的结构与方法论术语 (Saga / TCC / Outbox /
+Redlock / fencing token / Expand → Contract / Arrange · Act · Assert
+等) 不要翻译。每个种子带一个 `> Provenance` 段落 —— 不要删;它告诉
+下一位贡献者这份文档背后的权威与应遵循的调查协议。
 
 ### `.harness/knowledge/product.md`
 ```markdown

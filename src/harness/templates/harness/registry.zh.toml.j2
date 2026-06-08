@@ -1,0 +1,82 @@
+# Harness Adapter Registry
+# 由 harness v{{ harness_version }} 于 {{ timestamp }} 生成
+#
+# 每个 AI agent 终端的 adapter 声明:它的配置在哪里、playbook 命令
+# 如何被触发、它有哪些 capabilities (§14.7 terminal capability matrix)。
+# Playbook 必须在不具备某项能力的终端上优雅降级 —— 绝不能静默跳过 Gate。
+
+[adapters.claude]
+type            = "cli"
+config_dir      = ".claude"
+context_file    = "CLAUDE.md"
+commands_dir    = ".claude/commands"
+command_format  = "/hx-{cmd}"
+templates_dir   = "claude"
+
+[adapters.claude.capabilities.slash_commands]
+supported   = true
+required    = false
+degradation = "直接在 CLAUDE.md / AGENTS.md 中引用 playbook。"
+
+[adapters.claude.capabilities.subagent]
+supported   = true
+required    = false
+degradation = "在主会话中按顺序执行。"
+
+[adapters.claude.capabilities.hook]
+supported   = true
+required    = false
+degradation = "回退到 pre-commit + CI verify。"
+
+[adapters.claude.capabilities.context_import]
+supported   = true
+required    = false
+degradation = "把共享上下文内联进来 (有 @AGENTS.md import 时优先使用)。"
+
+[adapters.claude.capabilities.mcp]
+supported   = true
+required    = false
+degradation = "直接通过 shell 调用工具。"
+
+[adapters.claude.capabilities.file_attach]
+supported   = true
+required    = false
+degradation = "把文件内容粘贴进提示词。"
+
+[adapters.codex]
+type            = "cli"
+config_dir      = ".codex"
+context_file    = "AGENTS.md"
+commands_dir    = ".codex/commands"
+command_format  = "/hx-{cmd}"
+templates_dir   = "codex"
+
+[adapters.codex.capabilities.slash_commands]
+supported   = true
+required    = false
+degradation = "直接在 AGENTS.md 中引用 playbook。"
+
+[adapters.codex.capabilities.subagent]
+supported   = false
+required    = false
+degradation = "所有步骤在同一个会话内完成。"
+
+[adapters.codex.capabilities.hook]
+supported   = false
+required    = false
+degradation = "仅使用 pre-commit + CI verify。"
+
+[adapters.codex.capabilities.context_import]
+supported   = true
+required    = false
+degradation = "把共享上下文内联进 AGENTS.md。"
+
+[adapters.codex.capabilities.mcp]
+supported   = false
+required    = false
+degradation = "直接通过 shell 调用工具。"
+
+[adapters.codex.capabilities.file_attach]
+supported   = false
+required    = false
+degradation = "把文件内容粘贴进提示词。"

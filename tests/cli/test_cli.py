@@ -59,7 +59,8 @@ class TestInit:
         runner.invoke(cli, ["init", str(tmp_path), "--agent", "claude", "--no-git"])
         result = runner.invoke(cli, ["init", str(tmp_path), "--agent", "claude", "--no-git"])
         assert result.exit_code == 0
-        assert "already configured" in result.output
+        # zh-default phrasing: "所有请求的 agent 都已配置。"
+        assert "都已配置" in result.output
 
     def test_init_incremental_agent(self, tmp_path: Path) -> None:
         runner = CliRunner()
@@ -312,7 +313,8 @@ class TestDoctor:
         monkeypatch.chdir(tmp_path)
         result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
         assert result.exit_code == 0
-        assert "All checks passed" in result.output
+        # Default output_lang is zh, so doctor renders the zh phrasing.
+        assert "所有检查通过" in result.output
 
     def test_doctor_verbose_marks_lazy_paths(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch

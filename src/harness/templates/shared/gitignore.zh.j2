@@ -1,0 +1,28 @@
+# harness —— 受管理块 (请勿删除本注释)
+
+# harness 目录下的编辑器 / OS 噪声
+.harness/.DS_Store
+.harness/**/.DS_Store
+.agent/.DS_Store
+
+# 脚本构建产物
+.harness/scripts/**/__pycache__/
+.harness/scripts/**/*.pyc
+
+# 生成的报告 (L-GEN) —— 可重跑,默认不提交
+# 如果团队偏好把它们作为审计记录提交,可解除下行注释
+# .harness/evals/.reports/
+
+# 以下文件 **不要** 加进 ignore —— 它们是项目记录的一部分:
+#   .harness/playbooks/                  (mechanism: playbook 集)
+#   .harness/config.toml                 (本机配置)
+#   .harness/registry.toml               (adapter 注册表)
+#   .harness/memory/constitution.md      (L-RULE: 项目宪章)
+#   .harness/knowledge/                  (L-RULE: 项目知识库)
+#   .harness/principle-packs/            (技术栈规范包)
+#   .harness/templates/                  (交付物模板)
+#   specs/                               (单次变更的 SoT)
+#   .agent/progress.md                   (跨会话进度日志)
+#   AGENTS.md / CLAUDE.md                (agent 契约)
+#   .gitlab-ci.yml                       (MR pipeline + 定时漂移检查)
+#   .pre-commit-config.yaml              (commit 时的快速验证)

@@ -67,6 +67,12 @@ flow: [quick, standard, full, epic]
 
 引导 `{{ constitution_path }}` 时,逐字使用以下模板。
 
+> **种子内容保留英文**:下面 code-block 里的 `Rule:` / `Why:` /
+> `Compliance signal:` 是 `/hx-review`、`/hx-doctor`、`/hx-analyze`
+> 进行 grep 与合规判定的硬契约。无论项目自身使用什么语言,该种子
+> 都按下面的内容逐字写入 `.harness/memory/constitution.md`;团队
+> 可以在它之外另起一段中文注释,但**不要替换**英文条款。
+
 ```markdown
 # Constitution — {{ project_name }}
 

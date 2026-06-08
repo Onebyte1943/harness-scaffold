@@ -9,6 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from harness.core.config import HARNESS_DIR, detect_project_root, load_config
+from harness.core.i18n import messages
 from harness.core.layout import (
     ADR_DIR,
     AGENT_DIR,
@@ -275,16 +276,30 @@ def _check_adapters(project_root: Path) -> list[tuple[str, str, str]]:
     return results
 
 
+def _resolve_output_lang(root: Path) -> str:
+    """Read the project's output_lang from .harness/config.toml. Falls
+    back to `en` if config is unreadable — doctor never crashes on a
+    misconfigured project just to print its own diagnostics."""
+    try:
+        return load_config(root).output_lang
+    except Exception:
+        return "en"
+
+
 @click.command()
 @click.option("--verbose", "-v", is_flag=True, help="Show all checks including passing.")
 def doctor(verbose: bool) -> None:
     """Check harness integrity and report issues."""
     root = detect_project_root()
     if root is None:
-        console.print("[red]Not in a harness project.[/red] Run [cyan]harness init[/cyan] first.")
+        # No project context, so no config to read — default to en for
+        # this one diagnostic message.
+        m = messages("en")
+        console.print(f"[red]{m.doctor_not_in_project}[/red]")
         raise SystemExit(1)
 
-    console.print(f"[bold]Harness Doctor[/bold] — checking {root.name}\n")
+    m = messages(_resolve_output_lang(root))
+    console.print(f"[bold]{m.doctor_header.format(name=root.name)}[/bold]\n")
 
     all_results: list[tuple[str, str, str]] = []
     all_results.extend(_check_harness_structure(root))
@@ -293,11 +308,15 @@ def doctor(verbose: bool) -> None:
     all_results.extend(_check_adapters(root))
 
     table = Table(show_header=True, header_style="bold")
-    table.add_column("Status", width=6)
-    table.add_column("Item")
-    table.add_column("Detail")
+    table.add_column(m.doctor_table_status, width=6)
+    table.add_column(m.doctor_table_item)
+    table.add_column(m.doctor_table_detail)
 
-    icons = {"ok": "[green]OK[/green]", "warn": "[yellow]WARN[/yellow]", "error": "[red]FAIL[/red]"}
+    icons = {
+        "ok": f"[green]{m.doctor_ok}[/green]",
+        "warn": f"[yellow]{m.doctor_warn}[/yellow]",
+        "error": f"[red]{m.doctor_fail}[/red]",
+    }
     errors = 0
     warnings = 0
 
@@ -314,9 +333,13 @@ def doctor(verbose: bool) -> None:
 
     console.print()
     if errors > 0:
-        console.print(f"[red bold]{errors} error(s)[/red bold], {warnings} warning(s)")
+        console.print(
+            f"[red bold]{m.doctor_summary_errors.format(errors=errors, warnings=warnings)}[/red bold]"
+        )
         raise SystemExit(1)
     elif warnings > 0:
-        console.print(f"[green]No errors[/green], [yellow]{warnings} warning(s)[/yellow]")
+        console.print(
+            f"[green]{m.doctor_summary_warnings.format(warnings=warnings)}[/green]"
+        )
     else:
-        console.print("[green bold]All checks passed.[/green bold]")
+        console.print(f"[green bold]{m.doctor_all_passed}[/green bold]")

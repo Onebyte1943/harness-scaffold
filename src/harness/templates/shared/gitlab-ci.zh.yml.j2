@@ -1,0 +1,78 @@
+# {{ project_name }} 的 GitLab CI
+#
+# 由 harness v{{ harness_version }} 于 {{ timestamp }} 生成。
+#
+# 两种 pipeline 模式:
+#   1. Merge Request pipeline —— 确定性 verify + 推断性 review。
+#   2. Scheduled pipeline      —— 引用校验 + 知识↔代码漂移检查。
+#
+# 单一真相源: .harness/scripts/{{ script_shell }}/verify.sh。
+# 编辑器 hook (fast)、pre-commit (fast)、CI (full) 都调用同一脚本 ——
+# 任意两个传感器对"构建是否绿"不可能给出不一致的答案。
+
+stages:
+  - fast-verify
+  - verify
+  - review
+  - scheduled-drift
+
+default:
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq git
+  interruptible: true
+
+# ── Merge Request pipeline ────────────────────────────────────────────────
+
+fast-verify:
+  stage: fast-verify
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - .harness/scripts/{{ script_shell }}/verify.sh --fast
+
+verify:
+  stage: verify
+  needs: [fast-verify]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - .harness/scripts/{{ script_shell }}/verify.sh
+
+review:
+  stage: review
+  needs: [verify]
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    # 占位 —— 请接入团队的 CI agent,用其触发 /hx-review。
+    # review 契约见 .harness/playbooks/50-review.md。
+    - echo "通过你选用的 CI agent 触发 /hx-review。"
+    - echo "输入: MR diff、specs/NNN-*/、.harness/memory/constitution.md。"
+    - echo "输出: review 报告,带 VERDICT: ship | fix-then-ship。"
+  allow_failure: true
+
+# ── Scheduled pipeline (漂移 / 引用校验) ───────────────────────────────────
+
+reference-validator:
+  stage: scheduled-drift
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    # 校验 .harness/knowledge/ 与 specs/ 中每条 `path:line` 引用
+    # 是否仍指向实际存在的文件 / 行。
+    - echo "TODO: reference validator —— 在 .harness/scripts/{{ script_shell }}/lib/refcheck.sh 中实现。"
+
+knowledge-code-drift:
+  stage: scheduled-drift
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+  script:
+    # 检测 .harness/knowledge/ 与代码库之间的漂移:被删除的符号、
+    # 被重命名的模块、签名已变的接口。
+    - echo "TODO: knowledge↔code drift —— 在 .harness/scripts/{{ script_shell }}/lib/drift.sh 中实现。"
+
+# ── 备注 ────────────────────────────────────────────────────────────────
+# 在 GitLab UI 中 (CI/CD → Schedules) 添加按天触发的 schedule pipeline
+# 来驱动上面的漂移 / 引用校验 job。
+# 在保护分支设置中把 MR pipeline 设为必须通过。

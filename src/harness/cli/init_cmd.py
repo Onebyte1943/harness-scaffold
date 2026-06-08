@@ -16,6 +16,7 @@ from rich.table import Table
 
 from harness import __version__
 from harness.core.config import HARNESS_DIR, HarnessConfig, save_config
+from harness.core.i18n import Messages, messages
 from harness.core.layout import (
     AGENT_DIR,
     EVALS_DIR,
@@ -75,7 +76,7 @@ def _is_interactive() -> bool:
     return bool(isatty and isatty())
 
 
-def _prompt_agents() -> list[str]:
+def _prompt_agents(m: Messages) -> list[str]:
     try:
         import questionary
     except ImportError:
@@ -83,13 +84,13 @@ def _prompt_agents() -> list[str]:
 
     try:
         result = questionary.checkbox(
-            "Select AI agent terminals to support:",
+            m.pick_agents_prompt,
             choices=[
-                questionary.Choice("Claude Code", value="claude", checked=True),
-                questionary.Choice("Codex CLI", value="codex"),
-                questionary.Choice("Cursor (via registry, not bundled)", value="cursor"),
-                questionary.Choice("Copilot (via registry, not bundled)", value="copilot"),
-                questionary.Choice("Gemini CLI (via registry, not bundled)", value="gemini"),
+                questionary.Choice(m.pick_agents_claude, value="claude", checked=True),
+                questionary.Choice(m.pick_agents_codex, value="codex"),
+                questionary.Choice(m.pick_agents_cursor, value="cursor"),
+                questionary.Choice(m.pick_agents_copilot, value="copilot"),
+                questionary.Choice(m.pick_agents_gemini, value="gemini"),
             ],
         ).ask()
     except (KeyboardInterrupt, EOFError):
@@ -133,16 +134,18 @@ def _generate_brain(
     dry_run: bool = False,
 ) -> None:
     """Generate .harness/ brain directory (L-MECH layer)."""
-    console.print("\n[bold]Generating .harness/ brain...[/bold]")
+    m = messages(config.output_lang)
+    console.print(f"\n[bold]{m.generating_brain}[/bold]")
     root = config.project_root
     harness = root / HARNESS_DIR
 
-    engine.render_file(
-        "harness/registry.toml.j2",
+    engine.render_localized(
+        "harness/registry",
         harness / "registry.toml",
         context,
         force=force,
         dry_run=dry_run,
+        suffix=".toml.j2",
     )
     engine.render_file(
         "harness/config.toml.j2",
@@ -184,22 +187,24 @@ def _generate_brain(
         engine.ensure_dir(harness / sub, dry_run=dry_run)
 
     script_shell = config.script_shell
-    script_templates = [
-        (f"harness/scripts/{script_shell}/verify.sh.j2", f"scripts/{script_shell}/verify.sh"),
+    script_stems = [
+        (f"harness/scripts/{script_shell}/verify", f"scripts/{script_shell}/verify.sh"),
         (
-            f"harness/scripts/{script_shell}/lib/common.sh.j2",
+            f"harness/scripts/{script_shell}/lib/common",
             f"scripts/{script_shell}/lib/common.sh",
         ),
     ]
-    for tmpl, out in script_templates:
-        if engine.has_template(tmpl):
-            engine.render_file(
-                tmpl,
+    for stem, out in script_stems:
+        # Each stem must ship both .zh.sh.j2 and .en.sh.j2 siblings.
+        if engine.has_template(f"{stem}.{config.output_lang}.sh.j2"):
+            engine.render_localized(
+                stem,
                 harness / out,
                 context,
                 force=force,
                 dry_run=dry_run,
                 executable=True,
+                suffix=".sh.j2",
             )
 
 
@@ -216,7 +221,8 @@ def _generate_shared(
     L-RULE (constitution), L-STATE (specs, knowledge content) are still
     bootstrapped lazily by the first playbook that needs them.
     """
-    console.print("\n[bold]Generating shared contract layer...[/bold]")
+    m = messages(config.output_lang)
+    console.print(f"\n[bold]{m.generating_shared}[/bold]")
     root = config.project_root
 
     engine.render_localized(
@@ -227,20 +233,22 @@ def _generate_shared(
         dry_run=dry_run,
     )
 
-    engine.render_file(
-        "shared/gitlab-ci.yml.j2",
+    engine.render_localized(
+        "shared/gitlab-ci",
         root / GITLAB_CI_CONFIG,
         context,
         force=force,
         dry_run=dry_run,
+        suffix=".yml.j2",
     )
 
-    engine.render_file(
-        "shared/pre-commit-config.yaml.j2",
+    engine.render_localized(
+        "shared/pre-commit-config",
         root / PRE_COMMIT_CONFIG,
         context,
         force=force,
         dry_run=dry_run,
+        suffix=".yaml.j2",
     )
 
     # .agent/ holds .agent/progress.md once /hx-implement first writes there.
@@ -262,14 +270,15 @@ def _generate_adapters(
     """Generate per-agent adapter files."""
     from harness.adapters import get_adapter
 
+    m = messages(config.output_lang)
     for agent_name in config.agents:
-        console.print(f"\n[bold]Generating {agent_name} adapter...[/bold]")
+        console.print(f"\n[bold]{m.generating_adapter.format(agent=agent_name)}[/bold]")
         try:
             adapter = get_adapter(agent_name, engine)
             adapter.generate(config.project_root, context, force=force, dry_run=dry_run)
         except KeyError:
             console.print(
-                f"  [yellow]warning[/yellow] No adapter implementation for '{agent_name}', skipping"
+                f"  [yellow]warning[/yellow] {m.no_adapter_impl.format(agent=agent_name)}"
             )
 
 
@@ -281,61 +290,76 @@ def _init_git(
     dry_run: bool = False,
 ) -> None:
     """Initialize git repo if not already in one."""
+    m = messages(context.get("output_lang", "en"))
     if (project_root / ".git").exists():
         return
 
     if dry_run:
-        console.print("  [cyan]would run[/cyan] git init")
+        console.print(f"  [cyan]{m.git_would_init}[/cyan]")
         return
 
     try:
         subprocess.run(["git", "init"], cwd=project_root, capture_output=True, check=True)
-        console.print("  [green]git init[/green]")
+        console.print(f"  [green]{m.git_initialized}[/green]")
     except (subprocess.CalledProcessError, FileNotFoundError):
-        console.print("  [yellow]warning[/yellow] git not available, skipping git init")
+        console.print(f"  [yellow]warning[/yellow] {m.git_unavailable}")
 
-    if engine.has_template("shared/gitignore.j2"):
+    output_lang = context.get("output_lang", "en")
+    gitignore_tmpl = f"shared/gitignore.{output_lang}.j2"
+    if not engine.has_template(gitignore_tmpl):
+        gitignore_tmpl = "shared/gitignore.en.j2"  # fallback
+    if engine.has_template(gitignore_tmpl):
         gitignore_path = project_root / ".gitignore"
         if gitignore_path.exists():
             existing = gitignore_path.read_text()
             from jinja2 import Environment, FileSystemLoader
 
             env = Environment(loader=FileSystemLoader(str(_get_template_dir())))
-            tmpl = env.get_template("shared/gitignore.j2")
+            tmpl = env.get_template(gitignore_tmpl)
             harness_block = tmpl.render(**context)
             if "# harness" not in existing:
                 gitignore_path.write_text(existing.rstrip() + "\n\n" + harness_block)
-                console.print("  [green]append[/green] .gitignore")
+                console.print(f"  [green]{m.gitignore_appended}[/green]")
         else:
-            engine.render_file("shared/gitignore.j2", gitignore_path, context)
+            engine.render_file(gitignore_tmpl, gitignore_path, context)
 
 
 def _print_summary(config: HarnessConfig) -> None:
     """Print initialization summary."""
-    table = Table(title="Harness Initialized", show_header=True, header_style="bold cyan")
-    table.add_column("Setting", style="bold")
-    table.add_column("Value")
-    table.add_row("Project", config.project_root.name)
-    table.add_row("Profile", config.profile)
-    table.add_row("Flow", config.flow)
-    table.add_row("Lang", config.lang)
-    table.add_row("Output-Lang", config.output_lang)
-    table.add_row("Agents", ", ".join(config.agents))
-    table.add_row("Shell", config.script_shell)
+    m = messages(config.output_lang)
+    table = Table(title=m.summary_title, show_header=True, header_style="bold cyan")
+    table.add_column(m.summary_setting, style="bold")
+    table.add_column(m.summary_value)
+    table.add_row(m.summary_project, config.project_root.name)
+    table.add_row(m.summary_profile, config.profile)
+    table.add_row(m.summary_flow, config.flow)
+    table.add_row(m.summary_lang, config.lang)
+    table.add_row(m.summary_output_lang, config.output_lang)
+    table.add_row(m.summary_agents, ", ".join(config.agents))
+    table.add_row(m.summary_shell, config.script_shell)
     if config.presets:
-        table.add_row("Presets", ", ".join(config.presets))
+        table.add_row(m.summary_presets, ", ".join(config.presets))
     console.print()
     console.print(table)
     console.print()
+    # Splice the literal `/hx-*` and `harness doctor` tokens with cyan
+    # styling. Localized strings carry the surrounding prose; identifiers
+    # stay untranslated.
+    next_steps = "\n".join(
+        f"  {line}"
+        for line in (
+            m.next_step_constitution.replace(
+                "/hx-constitution", "[cyan]/hx-constitution[/cyan]"
+            ),
+            m.next_step_baseline.replace("/hx-baseline", "[cyan]/hx-baseline[/cyan]"),
+            m.next_step_next.replace("/hx-next", "[cyan]/hx-next[/cyan]"),
+            m.next_step_doctor.replace("harness doctor", "[cyan]harness doctor[/cyan]"),
+        )
+    )
     console.print(
         Panel(
-            "[bold]Next steps:[/bold]\n"
-            "  1. Run [cyan]/hx-constitution[/cyan] to synthesize "
-            "engineering principles\n"
-            "  2. Run [cyan]/hx-baseline[/cyan] to build the 7-doc knowledge base\n"
-            "  3. Run [cyan]/hx-next[/cyan] when in doubt about the next move\n"
-            "  4. Run [cyan]harness doctor[/cyan] to verify setup",
-            title="W0 Bootstrap",
+            f"[bold]{m.next_steps_title}[/bold]\n{next_steps}",
+            title=m.next_steps_panel_title,
             border_style="green",
         )
     )
@@ -417,16 +441,13 @@ def init(
         project_root.mkdir(parents=True)
 
     is_incremental = (project_root / HARNESS_DIR).exists()
+    m = messages(output_lang)
     if is_incremental and not agents:
-        console.print(
-            "[yellow]Harness already initialized.[/yellow] "
-            "Use --agent to add a new terminal adapter, or --force to "
-            "re-render the brain."
-        )
+        console.print(f"[yellow]{m.already_initialized}[/yellow]")
         if not force:
             return
 
-    agent_list = list(agents) if agents else (_prompt_agents() if _is_interactive() else ["claude"])
+    agent_list = list(agents) if agents else (_prompt_agents(m) if _is_interactive() else ["claude"])
     script_shell = script or _detect_shell()
     resolved_lang = lang or _detect_lang(project_root)
 
@@ -434,13 +455,16 @@ def init(
         from harness.core.config import load_config
 
         existing = load_config(project_root)
+        # Existing config's output_lang is the source of truth on
+        # incremental runs — never override the user's earlier choice.
+        m = messages(existing.output_lang)
         new_agents = [a for a in agent_list if a not in existing.agents]
         if not new_agents:
-            console.print("[yellow]All requested agents already configured.[/yellow]")
+            console.print(f"[yellow]{m.all_agents_already}[/yellow]")
             return
         existing.agents.extend(new_agents)
         config = existing
-        console.print(f"[bold]Adding agent(s): {', '.join(new_agents)}[/bold]")
+        console.print(f"[bold]{m.adding_agents.format(agents=', '.join(new_agents))}[/bold]")
     else:
         config = HarnessConfig(
             project_root=project_root,
@@ -458,7 +482,7 @@ def init(
     context = _build_context(config)
 
     if dry_run:
-        console.print("[bold cyan]DRY RUN — no files will be written[/bold cyan]\n")
+        console.print(f"[bold cyan]{m.dry_run_banner}[/bold cyan]\n")
 
     if not is_incremental or force:
         _generate_brain(engine, config, context, force=force, dry_run=dry_run)
@@ -475,4 +499,6 @@ def init(
     if not dry_run:
         _print_summary(config)
     else:
-        console.print(f"\n[cyan]Would generate {len(engine.generated_files)} files[/cyan]")
+        console.print(
+            f"\n[cyan]{m.dry_run_count.format(n=len(engine.generated_files))}[/cyan]"
+        )

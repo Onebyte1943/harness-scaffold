@@ -117,13 +117,13 @@ type-checker 能标记的事项,都属于工具配置,而不属于这里。
 
 阶段:**W0 Bootstrap → W1 Change → W2 Review & Archive → W3 Steer**。
 
-Phase | Commands
+阶段 | 命令
 ---|---
 W0 Bootstrap | `/hx-constitution` `/hx-baseline`
 W1 Change | `/hx-propose` `/hx-clarify` `/hx-design` `/hx-plan` `/hx-tasks` `/hx-analyze` `/hx-implement` `/hx-verify`
 W2 Review & Archive | `/hx-review` `/hx-archive`
 W3 Steer | `/hx-doctor`
-Routing | `/hx-next` (suggests next command + flow)
+路由 | `/hx-next` (推荐下一个命令 + flow 等级)
 
 Flow 等级控制流程繁简:**`{{ flow }}` 是本项目的默认值**。
 - `quick` —— bugfix / 小重构:implement → verify → review → archive
@@ -136,23 +136,23 @@ Flow 等级控制流程繁简:**`{{ flow }}` 是本项目的默认值**。
 ## Where Things Live
 
 ```
-.harness/                # tool-neutral brain (L-MECH)
-  memory/constitution.md # invariant principles (L-RULE)
-  knowledge/             # project knowledge base (7 docs + how-to + adr)
-  principle-packs/       # tech-stack norm packs (constitution synthesis)
-  playbooks/             # one playbook per /hx-* command
-  scripts/{{ script_shell }}/             # single SoT for verify
-  templates/             # delivery artifact templates (T1–T16)
-  evals/                 # harness's own regression samples
-specs/                   # per-change folders: NNN-<slug>/
-.agent/progress.md       # cross-session progress log (L-STATE)
-AGENTS.md                # this file (L-RULE)
+.harness/                # 工具中立的中枢 (L-MECH)
+  memory/constitution.md # 项目不变量原则 (L-RULE)
+  knowledge/             # 项目知识库 (7 篇核心文档 + how-to + adr)
+  principle-packs/       # 技术栈规范包 (用于宪章合成)
+  playbooks/             # 每个 /hx-* 命令对应一篇 playbook
+  scripts/{{ script_shell }}/             # verify 的单一真相源
+  templates/             # 交付物模板 (T1–T16)
+  evals/                 # harness 自身的回归样本
+specs/                   # 每次变更一个目录: NNN-<slug>/
+.agent/progress.md       # 跨会话进度日志 (L-STATE)
+AGENTS.md                # 本文件 (L-RULE)
 {% for agent in agents %}
-{% if agent == "claude" %}CLAUDE.md / .claude/commands/  # Claude-specific adapter
-{% endif %}{% if agent == "codex" %}.codex/commands/              # Codex-specific adapter
+{% if agent == "claude" %}CLAUDE.md / .claude/commands/  # Claude 专用 adapter
+{% endif %}{% if agent == "codex" %}.codex/commands/              # Codex 专用 adapter
 {% endif %}{% endfor %}
-.gitlab-ci.yml           # MR pipeline (verify + review) + scheduled drift
-.pre-commit-config.yaml  # fast verify on commit
+.gitlab-ci.yml           # MR pipeline (verify + review) + 定时漂移检查
+.pre-commit-config.yaml  # commit 时的快速 verify
 ```
 
 > 懒创建:除 `.harness/`、`AGENTS.md` 和 adapter 目录外,
