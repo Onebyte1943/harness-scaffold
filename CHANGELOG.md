@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- README + `docs/quick-start.md`: split install instructions into
+  **global** (`uv tool install` / `pipx install`) and **per-project**
+  (`uv add` or venv + `pip install`) modes, and added a
+  `harness: command not found` troubleshooting section. Bare
+  `pip install harness-scaffold` outside a venv was leaving the
+  `harness` script in user-site bin (often off PATH) or being blocked
+  by PEP 668 on Python 3.12+ — neither is a code bug, but the prior
+  docs led users into both traps.
+
 ## [0.2.1] - 2026-06-08
 
 ### Fixed

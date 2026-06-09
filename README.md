@@ -42,22 +42,49 @@ Harness solves this with a **one brain, many frontends** architecture:
 
 ## Quick Start
 
+PyPI distribution name is **`harness-scaffold`** (the bare `harness` name was already taken). The import path and CLI binary stay `harness`.
+
+### Install globally (recommended — gives you the `harness` command system-wide)
+
 ```bash
-# Install (PyPI — distribution name is harness-scaffold; import + CLI stay `harness`)
-pip install harness-scaffold
-# or with uv
+# With uv (recommended)
 uv tool install harness-scaffold
 
-# Or install directly from GitHub (works before any PyPI release)
-pip install git+https://github.com/Onebyte1943/harness-scaffold.git
-# or
-uv tool install git+https://github.com/Onebyte1943/harness-scaffold.git
+# Or with pipx
+pipx install harness-scaffold
+```
 
-# Initialize in your project
+`uv tool` / `pipx` install into an isolated environment and add the `harness` script to your PATH. Verify with `harness --version`.
+
+### Install per-project (inside a virtualenv)
+
+```bash
+# uv-managed project
+uv add harness-scaffold
+uv run harness --version
+
+# Plain venv + pip
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install harness-scaffold
+harness --version
+```
+
+### Install from GitHub (track main, or before a release is cut)
+
+```bash
+uv tool install git+https://github.com/Onebyte1943/harness-scaffold.git
+# or
+pipx install git+https://github.com/Onebyte1943/harness-scaffold.git
+```
+
+> **`harness: command not found` after `pip install`?** Bare `pip install harness-scaffold` (no venv) installs the script to user-site bin (`~/.local/bin` on Linux, `~/Library/Python/3.X/bin` on macOS) which is often not on PATH; on Python 3.12+ PEP 668 blocks system installs entirely. Use `uv tool install` or `pipx` for global CLI use, or activate a venv first.
+
+### Initialize in your project
+
+```bash
 cd your-project
 harness init --agent claude
-
-# Check setup
 harness doctor
 ```
 

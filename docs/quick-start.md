@@ -4,31 +4,61 @@ Get harness running in your project in under 5 minutes.
 
 ## Installation
 
-The PyPI distribution name is **`harness-scaffold`** (the name `harness`
-was already taken on PyPI by an unrelated project). The import path and
-the CLI binary remain `harness`.
+PyPI distribution name is **`harness-scaffold`** (the bare `harness` name was already taken on PyPI by an unrelated project). The import path and CLI binary remain `harness`.
 
-### With uv (recommended)
+There are two install modes — pick based on whether you want `harness` available everywhere on your machine, or scoped to one project.
+
+### Mode A — Global install (the `harness` command on your PATH)
+
+This is what most users want. Use an isolated-environment installer so the script lands somewhere your shell can find it:
 
 ```bash
+# With uv (recommended)
 uv tool install harness-scaffold
+
+# Or with pipx
+pipx install harness-scaffold
 ```
 
-### With pip
+Then verify:
 
 ```bash
-pip install harness-scaffold
+harness --version
 ```
 
-### Directly from GitHub
-
-Use this if you want to track `main` or install before a PyPI release is
-cut:
+To install from GitHub instead of PyPI (track `main`, or before a release is cut):
 
 ```bash
-pip install git+https://github.com/Onebyte1943/harness-scaffold.git
-# or
 uv tool install git+https://github.com/Onebyte1943/harness-scaffold.git
+# or
+pipx install git+https://github.com/Onebyte1943/harness-scaffold.git
+```
+
+To upgrade later:
+
+```bash
+uv tool upgrade harness-scaffold
+# or
+pipx upgrade harness-scaffold
+```
+
+### Mode B — Per-project install (inside a virtualenv)
+
+Use this when you want harness pinned alongside your project's other Python tooling, or when you're embedding harness into an existing Python codebase.
+
+**uv-managed project:**
+```bash
+uv add harness-scaffold
+uv run harness --version
+uv run harness init --agent claude
+```
+
+**Plain venv + pip:**
+```bash
+python -m venv .venv
+source .venv/bin/activate         # Windows: .venv\Scripts\activate
+pip install harness-scaffold
+harness --version
 ```
 
 ### From source (development)
@@ -39,6 +69,14 @@ cd harness-scaffold
 uv sync
 uv run harness --version
 ```
+
+### Troubleshooting: `harness: command not found`
+
+If you ran `pip install harness-scaffold` outside a venv and the `harness` command isn't found, one of these is the cause:
+
+- **Script directory not on PATH.** A bare `pip install --user` puts the entry-point script under `~/.local/bin` (Linux), `~/Library/Python/3.X/bin` (macOS), or `%APPDATA%\Python\Python3X\Scripts` (Windows). Run `python -m site --user-base` to find yours, then add `<that>/bin` to your PATH — or just use `uv tool install` / `pipx`, which handle PATH for you.
+- **PEP 668 blocked the install** (Python 3.12+ on macOS / Debian / Ubuntu). The system Python refuses bare `pip install`. Use `uv tool install` / `pipx`, or install inside a venv.
+- **Wrong Python.** `pip` and `python` may point to different interpreters. Try `python3 -m pip install harness-scaffold` and re-check.
 
 ## Initialize a Project
 
