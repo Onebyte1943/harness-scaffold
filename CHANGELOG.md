@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-06-09
+
 ### Documentation
 
 - README + `docs/quick-start.md`: split install instructions into
@@ -16,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `harness` script in user-site bin (often off PATH) or being blocked
   by PEP 668 on Python 3.12+ — neither is a code bug, but the prior
   docs led users into both traps.
+
+No code change vs 0.2.1 — docs-only release so PyPI's project page
+shows the corrected install instructions.
 
 ## [0.2.1] - 2026-06-08
 
@@ -143,5 +148,8 @@ Initial public release on PyPI as **`harness-scaffold`**.
   narrower exception handling around `questionary`, `sys.stdin`, and
   Jinja `TemplateNotFound`.
 
-[Unreleased]: https://github.com/Onebyte1943/harness-scaffold/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Onebyte1943/harness-scaffold/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/Onebyte1943/harness-scaffold/releases/tag/v0.2.2
+[0.2.1]: https://github.com/Onebyte1943/harness-scaffold/releases/tag/v0.2.1
+[0.2.0]: https://github.com/Onebyte1943/harness-scaffold/releases/tag/v0.2.0
 [0.1.0]: https://github.com/Onebyte1943/harness-scaffold/releases/tag/v0.1.0
