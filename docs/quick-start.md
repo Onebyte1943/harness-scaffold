@@ -34,14 +34,6 @@ uv tool install git+https://github.com/Onebyte1943/harness-scaffold.git
 pipx install git+https://github.com/Onebyte1943/harness-scaffold.git
 ```
 
-To upgrade later:
-
-```bash
-uv tool upgrade harness-scaffold
-# or
-pipx upgrade harness-scaffold
-```
-
 ### Mode B — Per-project install (inside a virtualenv)
 
 Use this when you want harness pinned alongside your project's other Python tooling, or when you're embedding harness into an existing Python codebase.
@@ -69,6 +61,28 @@ cd harness-scaffold
 uv sync
 uv run harness --version
 ```
+
+## Upgrading
+
+Use the upgrade command that matches how you installed.
+
+| Install path | Upgrade command |
+|---|---|
+| `uv tool install` | `uv tool upgrade harness-scaffold` |
+| `pipx install` | `pipx upgrade harness-scaffold` |
+| venv + `pip install` (venv activated) | `pip install --upgrade harness-scaffold` |
+| `uv add` (uv project) | `uv lock --upgrade-package harness-scaffold && uv sync` |
+| Source checkout | `git pull && uv sync` |
+
+To pin a specific version, append `==<version>` (e.g. `uv tool install harness-scaffold==0.2.2`); `uv tool` and `pipx` will reinstall in place.
+
+After upgrading, confirm:
+
+```bash
+harness --version
+```
+
+If the version printed isn't what you expected, you likely have **two `harness` scripts on PATH** — one from `uv tool` / `pipx` and another from a venv or user-site `pip install`. Run `which harness` (PowerShell: `Get-Command harness`) to see which one is winning, then either reorder PATH or remove the stale install.
 
 ### Troubleshooting: `harness: command not found`
 

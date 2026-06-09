@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Documentation
+
+- Added an explicit **Upgrading** section to README and
+  `docs/quick-start.md`. Covers the four install paths
+  (`uv tool` / `pipx` / venv-pip / `uv add`), version pinning, and
+  how to diagnose the "two `harness` on PATH" case where
+  `harness --version` keeps reporting the old version after upgrade.
+
 ## [0.2.2] - 2026-06-09
 
 ### Documentation

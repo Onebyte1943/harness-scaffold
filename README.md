@@ -80,6 +80,19 @@ pipx install git+https://github.com/Onebyte1943/harness-scaffold.git
 
 > **`harness: command not found` after `pip install`?** Bare `pip install harness-scaffold` (no venv) installs the script to user-site bin (`~/.local/bin` on Linux, `~/Library/Python/3.X/bin` on macOS) which is often not on PATH; on Python 3.12+ PEP 668 blocks system installs entirely. Use `uv tool install` or `pipx` for global CLI use, or activate a venv first.
 
+### Upgrade
+
+Match the upgrade command to how you installed:
+
+```bash
+uv tool upgrade harness-scaffold              # uv tool install
+pipx upgrade harness-scaffold                 # pipx install
+pip install --upgrade harness-scaffold        # venv + pip (venv activated)
+uv lock --upgrade-package harness-scaffold && uv sync   # uv project
+```
+
+Confirm with `harness --version`. See [docs/quick-start.md → Upgrading](docs/quick-start.md#upgrading) for pinning, version verification, and resolving "two `harness` on PATH" conflicts.
+
 ### Initialize in your project
 
 ```bash
