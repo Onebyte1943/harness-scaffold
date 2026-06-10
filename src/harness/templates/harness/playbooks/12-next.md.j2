@@ -29,29 +29,36 @@ no file output — only a recommendation.
 
 1. **Detect active change.** If on a `NNN-<slug>` branch with matching
    `specs/NNN-<slug>/`, use that. Otherwise treat as "no active change".
-2. **Signal collection**:
+2. **Read State + Lifecycle first.** When an active spec exists, read
+   `specs/<NNN>-<slug>/feature_list.json` and (if present)
+   `specs/<NNN>-<slug>/session-handoff.md`. The handoff's
+   "Next Session Startup" + the next executable feature
+   (per `harness state next`) often answer the routing question
+   directly — return that before doing flow analysis.
+3. **Signal collection**:
    - `n_files = git diff --name-only main...HEAD | wc -l`
    - `touches_public_api` — true if changes hit declared public API surface.
    - `touches_security` — true if changes hit security-sensitive paths
      (auth, crypto, payment, secrets).
    - `req_size` — number of user-facing requirements (from proposal /
      design if present).
-3. **Suggest flow level**:
+4. **Suggest flow level**:
    - `quick` — n_files ≤ 3, no public API, no security, no constitution
      `[enforceable]` impact.
    - `standard` — default; n_files ≤ 20.
    - `full` — touches_public_api OR touches_security OR n_files > 20.
    - `epic` — req_size > 1 capability or spans modules with conflicting
      owners.
-4. **Suggest next command** based on what artifacts exist in `specs/NNN/`:
+5. **Suggest next command** based on what artifacts exist in `specs/NNN/`:
    - none → `/hx-propose` (or `/hx-design` if design-first).
    - proposal only → `/hx-clarify` if ambiguities flagged; else `/hx-design`
      (full+) or `/hx-plan` (standard).
    - design exists, no plan → `/hx-plan`.
    - plan exists, no tasks → `/hx-tasks`.
-   - tasks exist, not all done → `/hx-implement`.
+   - tasks exist, not all done → `/hx-implement` (and run
+     `harness state next` to pick the feature).
    - all tasks done → `/hx-verify`, then `/hx-review`, then `/hx-archive`.
-5. **Print** the recommendation as: `flow = X · next = /hx-Y · reason = ⟨…⟩`.
+6. **Print** the recommendation as: `flow = X · next = /hx-Y · reason = ⟨…⟩`.
    List the signals that drove the choice so the human can override.
 
 ## Outputs

@@ -21,7 +21,7 @@ class HarnessConfig:
     """Harness project configuration (design v3)."""
 
     project_root: Path
-    profile: Literal["brownfield", "greenfield"] = "brownfield"
+    profile: Literal["brownfield", "greenfield", "vibecode"] = "brownfield"
     flow: Literal["quick", "standard", "full", "epic"] = "standard"
     lang: str = "auto"
     agents: list[str] = field(default_factory=lambda: ["claude"])

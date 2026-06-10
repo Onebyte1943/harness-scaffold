@@ -38,7 +38,7 @@ console = Console()
 # remain in VALID_AGENTS so the registry can be extended without code
 # changes, but they are not promoted as defaults in docs.
 VALID_AGENTS = ["claude", "codex", "cursor", "copilot", "gemini"]
-VALID_PROFILES = ["brownfield", "greenfield"]
+VALID_PROFILES = ["brownfield", "greenfield", "vibecode"]
 VALID_FLOWS = ["quick", "standard", "full", "epic"]
 VALID_PRESETS = ["trunk-based", "ddd", "secure"]
 VALID_LANGS = ["auto", "python", "typescript", "go", "rust", "java", "polyglot"]
@@ -102,6 +102,91 @@ def _get_template_dir() -> Path:
     return Path(__file__).parent.parent / "templates"
 
 
+def _backup_legacy_agents_md(root: Path, *, force: bool, dry_run: bool) -> None:
+    """0.2 → 0.3 migration: if --force will overwrite a pre-0.3 AGENTS.md,
+    back the existing one up to AGENTS.md.0.2.bak. Only runs when
+    `force=True` AND the existing AGENTS.md predates the 5-subsystem
+    rewrite (no `## Subsystems` heading) AND no backup file exists yet.
+
+    The detection is structural rather than version-based: the
+    pre-0.3 template did not contain the `## Subsystems` line, the
+    0.3 template requires it. Future template revisions can refine
+    the marker without breaking the migration path.
+    """
+    if not force:
+        return
+    agents_md = root / "AGENTS.md"
+    if not agents_md.exists():
+        return
+    try:
+        body = agents_md.read_text()
+    except OSError:
+        return
+    if "## Subsystems" in body:
+        # Already 0.3+ — nothing to migrate.
+        return
+    backup = root / "AGENTS.md.0.2.bak"
+    if backup.exists():
+        # Already migrated once; don't clobber the prior backup.
+        console.print(
+            "  [yellow]warn[/yellow] AGENTS.md.0.2.bak already exists — "
+            "leaving prior backup in place."
+        )
+        return
+    if dry_run:
+        console.print("  [cyan]would back up legacy AGENTS.md → AGENTS.md.0.2.bak[/cyan]")
+        return
+    backup.write_text(body)
+    console.print("  [green]backed up legacy AGENTS.md → AGENTS.md.0.2.bak[/green]")
+
+
+def _backup_legacy_constitution(root: Path, *, force: bool, dry_run: bool) -> None:
+    """0.3 → 0.4 migration: if a pre-0.4 constitution exists (no Sync
+    Impact Report and no spec-kit `**Version**:` line), back it up to
+    `.harness/memory/constitution.md.0.3.bak` so the user can diff
+    against it after running `/hx-constitution` to regenerate the
+    spec-kit-shaped file.
+
+    The constitution itself is lazy (created by `/hx-constitution`,
+    not by `harness init`), so this helper only runs when --force is
+    set and the file already exists. We do not write a fresh
+    constitution.md here — that's `/hx-constitution`'s job.
+    """
+    if not force:
+        return
+    from harness.core.layout import CONSTITUTION_PATH
+
+    constitution = root / CONSTITUTION_PATH
+    if not constitution.exists():
+        return
+    try:
+        body = constitution.read_text()
+    except OSError:
+        return
+    has_sync_report = "SYNC IMPACT REPORT" in body[:200]
+    has_version_line = "**Version**" in body
+    if has_sync_report and has_version_line:
+        # Already spec-kit-formatted — nothing to migrate.
+        return
+    backup = constitution.with_suffix(".md.0.3.bak")
+    if backup.exists():
+        console.print(
+            f"  [yellow]warn[/yellow] {backup.name} already exists — leaving prior backup in place."
+        )
+        return
+    if dry_run:
+        console.print(
+            f"  [cyan]would back up legacy {CONSTITUTION_PATH} → {backup.relative_to(root)}[/cyan]"
+        )
+        return
+    backup.write_text(body)
+    console.print(
+        f"  [green]backed up legacy {CONSTITUTION_PATH} → "
+        f"{backup.relative_to(root)}[/green] "
+        "(rerun /hx-constitution to regenerate in spec-kit format)"
+    )
+
+
 def _build_context(config: HarnessConfig) -> dict[str, Any]:
     return {
         "project_name": config.project_root.name,
@@ -139,6 +224,11 @@ def _generate_brain(
     root = config.project_root
     harness = root / HARNESS_DIR
 
+    # 0.3 → 0.4 migration: if --force is overwriting a pre-spec-kit
+    # constitution, back it up first so the user can diff against the
+    # newly regenerated file.
+    _backup_legacy_constitution(root, force=force, dry_run=dry_run)
+
     engine.render_file(
         "harness/registry.toml.j2",
         harness / "registry.toml",
@@ -171,9 +261,31 @@ def _generate_brain(
         dry_run=dry_run,
     )
 
+    # 12-Factor Agents pack — Subsystem 1 (Instructions) feed material
+    # for /hx-constitution. Selected automatically by brownfield /
+    # vibecode profiles; available to greenfield via explicit pick.
+    engine.render_file(
+        "harness/principle-packs/12-factor-agents.md.j2",
+        harness / "principle-packs" / "12-factor-agents.md",
+        context,
+        force=force,
+        dry_run=dry_run,
+    )
+
     engine.render_file(
         "harness/evals/README.md.j2",
         harness / "evals" / "README.md",
+        context,
+        force=force,
+        dry_run=dry_run,
+    )
+
+    # feature_list.schema.json — Subsystem 2 (State). Ships at
+    # .harness/templates/feature_list.schema.json so each spec's
+    # feature_list.json can `$ref` it for editor / CI validation.
+    engine.render_file(
+        "harness/templates/feature_list.schema.json.j2",
+        harness / "templates" / "feature_list.schema.json",
         context,
         force=force,
         dry_run=dry_run,
@@ -221,6 +333,11 @@ def _generate_shared(
     console.print(f"\n[bold]{m.generating_shared}[/bold]")
     root = config.project_root
 
+    # 0.2 → 0.3 migration: if --force is overwriting a pre-0.3 AGENTS.md
+    # (one without the `## Subsystems` heading the new template carries),
+    # back it up first so the user can diff against their old contract.
+    _backup_legacy_agents_md(root, force=force, dry_run=dry_run)
+
     engine.render_file(
         "shared/AGENTS.md.j2",
         root / "AGENTS.md",
@@ -243,6 +360,19 @@ def _generate_shared(
         context,
         force=force,
         dry_run=dry_run,
+    )
+
+    # init.sh — Subsystem 3 (Verification) entry script.
+    # Single command the agent runs at session start (Resume); calls verify.sh.
+    init_template = "shared/init.sh.j2" if config.script_shell == "sh" else "shared/init.ps1.j2"
+    init_filename = "init.sh" if config.script_shell == "sh" else "init.ps1"
+    engine.render_file(
+        init_template,
+        root / init_filename,
+        context,
+        force=force,
+        dry_run=dry_run,
+        executable=True,
     )
 
     # .agent/ holds .agent/progress.md once /hx-implement first writes there.

@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harness-scaffold.dev/schemas/feature_list.schema.json",
+  "title": "Harness feature_list",
+  "description": "Machine-readable task state for one spec. Per AGENTS.md Subsystem 2 (State), this file is the contract that /hx-implement, harness state, and harness doctor read. Agents may only flip status and write evidence — every other field is the contract.",
+  "type": "object",
+  "required": ["spec_id", "features"],
+  "additionalProperties": false,
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "description": "Three-digit spec identifier matching specs/<NNN>-<slug>/."
+    },
+    "features": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/feature" }
+    }
+  },
+  "$defs": {
+    "feature": {
+      "type": "object",
+      "required": ["id", "name", "depends_on", "status", "evidence", "verification"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable ID matching the corresponding tasks.md entry (e.g. T1.1, feat-001)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Short imperative summary."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Feature ids that must reach status=passing before this one starts."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["not-started", "in-progress", "passing"]
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Proof of passing: commit SHA, test output snippet, or path:line citation. MUST be non-empty when status=passing."
+        },
+        "verification": {
+          "type": "string",
+          "description": "Exact command the agent runs before flipping status to passing."
+        }
+      }
+    }
+  }
+}

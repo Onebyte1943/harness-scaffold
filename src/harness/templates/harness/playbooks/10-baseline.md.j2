@@ -40,6 +40,64 @@ the investigation goes. **Default is `L2`.** Invoke as
 Each tier includes everything required by the lower tiers. The Exit
 criteria below gate per tier.
 
+## Investigation methodology — MEASURE → SYNTHESIZE → VERIFY
+
+The baseline pipeline runs in three phases. **Do not skip phase 1**:
+LLM left to "infer" from prose drifts into hallucination; tool output
+forces grounded citations.
+
+### Phase 1 — MEASURE (deterministic capture, runs at every tier)
+
+Run the matching command per stack. Save outputs into a scratch dir
+(`.harness/.baseline-cache/` is fine; `.gitignore`'d). LLM consumes
+these files later — it does not run the tools as a side effect of
+writing prose.
+
+| Concern | Tool (per stack) |
+|---|---|
+| Module / dependency graph (Python) | `pyreverse -o mmd src/` (pylint) |
+| Dependency graph (Node / TS) | `madge --json src/` or `dependency-cruiser src/` |
+| Module deps (Java) | `jdeps -summary` |
+| Module tree (Rust) | `cargo modules generate tree` |
+| Module tree (Go) | `go-callvis` |
+| Software bill of materials | `syft <repo> -o spdx-json=sbom.json` (Anchore) |
+| Lockfile native | `pip-licenses` / `npm ls --json` / `mvn dependency:tree` / `go list -m all` |
+| Hot files (`git churn`) | `git log --pretty=format: --name-only --since=12.months \| sort \| uniq -c \| sort -rn \| head -50` |
+| Risk hotspots | `git log --grep='fix\|revert\|hotfix\|incident' --since=12.months` |
+| Tech debt seeds | `git grep -nE 'TODO\|FIXME\|HACK\|XXX'` |
+| Hot path coverage | `coverage run -m pytest && coverage report --skip-covered` (or stack-equivalent) |
+| Public API surface | `openapi-cli bundle` / `protoc --descriptor` / type exports tooling |
+
+### Phase 2 — SYNTHESIZE (LLM organizes, never invents)
+
+For each of the 7 docs, the LLM does two things:
+
+- **Organize**: take the matching MEASURE outputs and shape them into
+  the doc's authoritative form (the 7 forms are listed below).
+- **Cite**: every non-trivial sentence carries `path:line`,
+  `command output`, `git SHA`, or a named non-code source (`PRD §3.2`,
+  `runbook: payments-oncall.md`).
+
+Forbidden during SYNTHESIZE: writing any sentence that the MEASURE
+outputs do not support. If MEASURE produced no evidence for a claim,
+park it in `## Open Questions` instead.
+
+### Phase 3 — VERIFY (doctor checks the artifact)
+
+`harness doctor` runs content-quality checks under the **Scope** row:
+
+- **Cite-density floor**: every doc averages ≥ 1 `path:line`-style
+  cite per 200 words (sampled across 3 paragraphs).
+- **Cite-validity**: a sample of 5 cites are checked — file exists,
+  line within range.
+- **Required-sections-present**: each of the 7 templates declares
+  required headings; missing headings → WARN.
+- **Structure-form**: tables and numbered steps actually appear where
+  the template requires them.
+
+Below threshold → WARN; far below → FAIL with a hint to rerun
+`/hx-baseline --refresh <doc>`.
+
 ## Investigation protocol — the five-lens toolbelt
 
 A knowledge base is only as accurate as its sources. **Triangulate** —
@@ -138,15 +196,25 @@ Run the matching protocol per file. Tier requirements are cumulative.
 
 ### `business.md`
 
+- Methodology: BIZBOK (OMG) capability + BABOK v3 (IIBA) stakeholder
+  + rules taxonomy + OKR/SLO. **Architecture-neutral** — do not
+  assume DDD, microservices, layered MVC, CRUD, or any specific style.
 - Lenses: domain triangulation (primary, mandatory) · non-code
   triangulation. **Static structure alone is never sufficient.**
-- L1: capability map L1 only; all entries `to-be-confirmed`.
-- L2: + L2 capability map with owners; ubiquitous-language table seeded
-  from code names; **at least one non-code source cited per L2
-  capability** (PRD §, interview, runbook).
-- L3: + domain event timeline (Event Storming) with hotspots;
-  rules / invariants table with non-code citations; every entry either
-  cleared or explicitly parked in Open Questions.
+- L1: Business Context + Stakeholders table + Domain Glossary
+  with all entries `to-be-confirmed`.
+- L2: + Business Rules table with at least one non-code source per
+  rule (PRD §, regulation, contract, interview); + Key Workflows
+  for the 1-2 most critical user-visible flows in **business
+  vocabulary** (no system / API / event terms).
+- L3: + complete Constraints & Compliance table cross-validated with
+  legal / compliance / SRE; + Metrics That Matter aligned with
+  current OKRs / SLOs; every entry either cleared or explicitly
+  parked in Open Questions.
+
+> Forbidden in business.md: domain events, aggregates, bounded
+> contexts, sagas, CQRS, command handlers. If the project uses any
+> of these, document them in `architecture.md` instead.
 
 ### `conventions.md`
 
@@ -204,8 +272,11 @@ The 7 knowledge documents under `.harness/knowledge/`:
 - `tech-stack.md` — Thoughtworks Tech Radar cards (per tech: role · how we use it
   with `path:line` · best practice · pitfalls · version · maturity ring) **+
   mandatory section for internal company frameworks**.
-- `business.md` — BIZBOK capability map + Event Storming / Domain Storytelling +
-  ubiquitous language (architecture-neutral; default *to be confirmed*).
+- `business.md` — BIZBOK + BABOK + OKR/SLO; **architecture-neutral**: 7
+  fixed sections (Business Context · Stakeholders · Domain Glossary ·
+  Business Rules · Key Workflows · Constraints & Compliance · Metrics
+  That Matter); default *to be confirmed* until cross-validated with
+  a non-code source.
 - `conventions.md` — Google Style + Alibaba Java Development Manual + cloud-native:
   code style / naming · error handling · logging · testing · **concurrency &
   locks · transactions (local + Saga / Outbox / TCC) · distributed locks
@@ -310,9 +381,9 @@ which authority shaped the doc and which investigation protocol to follow.
 # Product — {{ project_name }}
 
 > Provenance
-> - Authoritative paradigm: Amazon Working Backwards / PR-FAQ + Marty Cagan (four product-discovery risks: value · usability · feasibility · viability)
-> - Investigation protocol: read README / landing page / customer scenarios; interview PM and business stakeholders; evidence-or-silence — every business claim must be cross-validated against a non-code source
-> - Output form: Working-Backwards narrative (problem → users → value → capabilities → journeys → metrics), press-release framing + FAQ for residual ambiguity
+> - Authoritative paradigm: Amazon Working Backwards / PR-FAQ + Marty Cagan four-risk discovery (value · usability · feasibility · viability) + Cohn user-story (`As a X, I want Y, so that Z`) + Christensen Jobs-to-be-Done for Key Journeys
+> - Investigation protocol: read README / landing page / customer scenarios; interview PM and business stakeholders; evidence-or-silence — every business claim cross-validated against a non-code source; Out-of-Scope is mandatory (omitting it implies "all of the above")
+> - Output form: 8 fixed sections — Problem & Users · Value Proposition · Core Capabilities (user-story) · Key Journeys (JTBD) · Performance Targets (concrete numbers) · Constraints · Scope / Non-goals · Open Questions
 
 ## Problem & Users
 ⟨one paragraph: what painful problem, for whom; who suffers most⟩
@@ -320,15 +391,24 @@ which authority shaped the doc and which investigation protocol to follow.
 ## Value Proposition (Press-Release style)
 ⟨headline · sub-headline · one quote from a representative user⟩
 
-## Core Capabilities
-- ⟨capability⟩ — entry: ⟨path:line⟩ — outcome: ⟨user-visible result⟩
+## Core Capabilities (Cohn user-story format)
+- **As a** ⟨persona⟩ **I want** ⟨capability⟩ **so that** ⟨outcome⟩.
+  Entry: ⟨path:line⟩.
+- ⟨…⟩
 
-## Key Journeys
-1. ⟨persona⟩ wants to ⟨job⟩ → ⟨steps the system supports⟩ → ⟨success state⟩
+## Key Journeys (Jobs-to-be-Done lens)
+1. **When** ⟨trigger / situation⟩ **I want to** ⟨job-to-be-done⟩
+   **so I can** ⟨desired progress⟩.
+   Steps the system supports: ⟨numbered, with path:line where useful⟩.
+2. ⟨…⟩
 
-## Success Metrics
-- North-star: ⟨…⟩
-- Guardrails: ⟨quality / cost / latency / safety⟩
+## Performance Targets
+| Target | Value | Owner | How measured |
+| ------ | ----- | ----- | ------------ |
+| ⟨P95 query latency⟩ | ⟨< 500 ms⟩ | ⟨team⟩ | ⟨metric / dashboard⟩ |
+
+## Constraints
+- ⟨e.g. supported file size · supported formats · offline-first⟩
 
 ## Scope / Non-goals
 - In: ⟨…⟩
@@ -397,6 +477,11 @@ C4Container
 - [ADR-0001] ⟨title⟩ — status — link `.harness/knowledge/adr/0001-*.md`
 - ⟨…⟩
 
+## Invariants
+| Invariant (system-wide MUST hold) | Proof (path:line) | Test (path) |
+| --------------------------------- | ----------------- | ----------- |
+| ⟨e.g. "every order has a unique id"⟩ | ⟨src/services/order.py:48⟩ | ⟨tests/test_order_invariants.py⟩ |
+
 ## Open Questions
 ⟨unverifiable from code; to confirm with humans⟩
 ```
@@ -444,31 +529,51 @@ C4Container
 # Business — architecture-neutral
 
 > Provenance
-> - Authoritative paradigm: BIZBOK capability map + Event Storming / Domain Storytelling + Ubiquitous Language — architecture-neutral (does not assume DDD or microservices)
-> - Investigation protocol: read PRD / business wiki; interview domain experts; evidence-or-silence; **every business claim defaults to *to be confirmed*** and can be cleared only after cross-validation against a non-code source
-> - Output form: capability map + domain event timeline + ubiquitous-language dictionary + rules / invariants with status; Open Questions parked for the domain owner
+> - Authoritative paradigm: BIZBOK (OMG Business Architecture Body of Knowledge) capability map + BABOK v3 (IIBA Business Analysis) stakeholder + rules taxonomy + OKR/SLO for metrics — **architecture-neutral**: makes no assumption about DDD, microservices, layered MVC, CRUD, data pipeline, monolith, or any specific software architecture style
+> - Investigation protocol: read PRD / business wiki / sales decks / support clusters; interview domain experts and PM; evidence-or-silence; **every business claim defaults to *to be confirmed*** and can be cleared only after cross-validation against a non-code source; do not import architecture vocabulary (no events / aggregates / bounded contexts / sagas) into this doc — those belong in `architecture.md` if and only if the project uses that style
+> - Output form: 7 fixed sections (Business Context · Stakeholders · Domain Glossary · Business Rules · Key Workflows · Constraints & Compliance · Metrics That Matter); the 7 sections are filled the same way for traditional CRUD, layered MVC, microservices, data pipelines, ML systems
 
 > Everything below defaults to *to be confirmed* until cross-validated
-> with a non-code source (PRD, domain expert, existing domain doc).
+> with a non-code source (PRD, domain expert, regulation, contract).
 
-## Business Capability Map (BIZBOK)
-- ⟨L1 capability⟩
-  - ⟨L2 capability⟩ — owner: ⟨team⟩ — status: to-be-confirmed
-  - ⟨L2 capability⟩ — owner: ⟨team⟩ — status: to-be-confirmed
+## Business Context
+⟨≤2 paragraphs: who runs this business, who pays for it, what
+problem it solves, against what cost. No software vocabulary.⟩
 
-## Ubiquitous Language
-| Term | Definition | Used in code as | Status |
-| ---- | ---------- | --------------- | ------ |
-| ⟨…⟩ | ⟨…⟩ | ⟨path:line⟩ | to-be-confirmed |
+## Stakeholders
+| Role | Concerns | Touch-points (system or process) |
+| ---- | -------- | -------------------------------- |
+| ⟨e.g. Customer / Ops / Compliance / Vendor / Internal team⟩ | ⟨what they want or worry about⟩ | ⟨where they interact: feature, report, support channel⟩ |
 
-## Key Domain Events (Event Storming)
-⟨timeline: trigger → event → policy → command → event …; mark hotspots⟩
+## Domain Glossary
+| Term | Plain-language definition | First-mentioned-at | Status |
+| ---- | ------------------------- | ------------------ | ------ |
+| ⟨…⟩ | ⟨definition without code-internal jargon⟩ | ⟨PRD §… / contract / interview / path:line⟩ | to-be-confirmed |
 
-## Key Journeys (Domain Storytelling)
-1. ⟨actor⟩ ⟨action⟩ ⟨work object⟩ → ⟨downstream effect⟩
+## Business Rules
+| Rule-id | Statement (declarative) | Source |
+| ------- | ----------------------- | ------ |
+| BR-001  | ⟨"A user MUST be of legal age before purchasing X"⟩ | ⟨PRD §… / regulation / policy / DEC-NNN⟩ |
 
-## Rules and Invariants
-- ⟨rule⟩ — status: to-be-confirmed — source: ⟨PRD §… / interview⟩
+## Key Workflows
+1. ⟨actor⟩ ⟨business action⟩ ⟨object⟩ → ⟨downstream outcome⟩.
+   ⟨Describe in business terms — "submit application", "approve refund",
+   "ship order" — not in system terms ("call API", "write to queue").
+   The same workflow is filled the same way regardless of whether the
+   system is monolith, microservices, ETL pipeline, or batch job.⟩
+
+## Constraints & Compliance
+| Constraint | Value / Boundary | Source / Authority |
+| ---------- | ---------------- | ------------------ |
+| ⟨e.g. GDPR data retention⟩ | ⟨7 years for billing records⟩ | ⟨GDPR Art. 5(1)(e), legal advisory⟩ |
+| ⟨SLA / contract⟩ | ⟨99.5% monthly availability⟩ | ⟨Master Services Agreement §4⟩ |
+| ⟨Industry standard⟩ | ⟨PCI-DSS Level 1⟩ | ⟨Acquirer requirement⟩ |
+
+## Metrics That Matter
+| Metric | Target | Owner | How measured |
+| ------ | ------ | ----- | ------------ |
+| ⟨e.g. Activation rate⟩ | ⟨≥40% within 7 days⟩ | ⟨PM⟩ | ⟨analytics dashboard / SQL⟩ |
+| ⟨SLO: API success rate⟩ | ⟨99.9% / 30d⟩ | ⟨SRE⟩ | ⟨error-budget burn alert⟩ |
 
 ## Open Questions
 ⟨items requiring domain expert input; cite who can answer⟩
@@ -479,9 +584,25 @@ C4Container
 # Conventions — Google Style + 阿里巴巴开发手册 + Cloud-Native
 
 > Provenance
-> - Authoritative paradigm: Google Style Guides + Alibaba Java Development Manual + 12-Factor / Cloud-Native + Chris Richardson's microservices patterns — the union covers code style through distributed concerns
-> - Investigation protocol: sample `git churn` hotspots and incident history; every convention must be backed by an in-repo `path:line` example and a citation to its industry source; evidence-or-silence; tool-enforceable rules link to tool config rather than duplicating prose
-> - Output form: one section per concern — Project practice + Industry paradigm + canonical `path:line` + GOOD / BAD pair; mandatory sections include concurrency / transactions / distributed locks (with fencing-token caveat) / caching / MQ / middleware / config / API / observability / security
+> - Authoritative paradigm: Thoughtworks "Anchoring AI to a reference application" (every layer has a canonical exemplar file) + Google Style Guides (GOOD / BAD pair format) + Alibaba Java Development Manual + 12-Factor / Cloud-Native + Chris Richardson's microservices patterns
+> - Investigation protocol: sample `git churn` hotspots and incident history; every convention must be backed by an in-repo `path:line` example and a citation to its industry source; tool-enforceable rules link to tool config rather than duplicating prose; only document style choices the toolchain does NOT already enforce
+> - Output form: Reference Exemplars table at the top (one canonical file per layer) + one section per concern with Project practice + Industry paradigm + canonical `path:line` + GOOD / BAD pair; mandatory sections include concurrency / transactions / distributed locks (with fencing-token caveat) / caching / MQ / middleware / config / API / observability / security
+
+## Reference Exemplars (anchor files)
+
+> When AI is asked to write new code in any layer below, it copies
+> the canonical file's structure as the starting point — not invents
+> a new shape. This single table is the most important convention
+> the project ships.
+
+| Layer | Canonical file | Why canonical |
+| ----- | -------------- | ------------- |
+| ⟨e.g. CLI command⟩ | ⟨src/⟨area⟩/⟨file⟩.py⟩ | ⟨"shows: arg parsing + structured logging + error handling"⟩ |
+| ⟨domain service⟩ | ⟨…⟩ | ⟨…⟩ |
+| ⟨HTTP handler⟩ | ⟨…⟩ | ⟨…⟩ |
+| ⟨unit test⟩ | ⟨…⟩ | ⟨…⟩ |
+| ⟨integration test⟩ | ⟨…⟩ | ⟨…⟩ |
+| ⟨migration⟩ | ⟨…⟩ | ⟨…⟩ |
 
 ## Code Style & Naming
 - Project practice: ⟨…⟩
@@ -569,13 +690,13 @@ C4Container
 # Glossary — term ⇄ code name
 
 > Provenance
-> - Authoritative paradigm: DDD Ubiquitous Language — the glossary is the single source of truth for the domain↔code naming map
-> - Investigation protocol: keep aligned with the ubiquitous-language table in `business.md`; every mapping cites the `path:line` of its definition site; synonyms and forbidden terms are listed explicitly to prevent drift
-> - Output form: table — Domain term · Code name · Defined at · Synonyms-to-avoid
+> - Authoritative paradigm: ISO/IEC 11179 (Metadata Registries) — every term is a registered entry with definition, source, and synonym set; complementary to `business.md` Domain Glossary (which limits scope to business-domain terms; this file covers all project-internal terms including technical names)
+> - Investigation protocol: keep aligned with `business.md` Domain Glossary; for code-internal terms, cite the `path:line` of the definition site (class / type / constant); list synonyms-to-avoid explicitly to prevent drift; **no prose paragraphs** — the file is a single authoritative table
+> - Output form: single ISO/IEC 11179 table — Term · Definition · First-mentioned-at · Synonyms-to-avoid; no narrative; no headings beyond the file title
 
-| Domain term | Code name | Defined at | Synonyms (avoid) |
-| ----------- | --------- | ---------- | ---------------- |
-| ⟨…⟩ | ⟨…⟩ | ⟨path:line⟩ | ⟨…⟩ |
+| Term | Definition | First-mentioned-at | Synonyms (avoid) |
+| ---- | ---------- | ------------------ | ---------------- |
+| ⟨…⟩ | ⟨one-sentence canonical definition⟩ | ⟨path:line / PRD §… / contract⟩ | ⟨…⟩ |
 ```
 
 ### `.harness/knowledge/setup-and-verify.md`
@@ -583,21 +704,36 @@ C4Container
 # Setup and Verify
 
 > Provenance
-> - Authoritative paradigm: 12-Factor §V Build / Release / Run + spec-kit single-source-of-truth verify (`verify.sh` is the only sensor)
-> - Investigation protocol: derive the command chain from `.harness/scripts/{{ script_shell }}/verify.sh`; actually run install → build → test → run to confirm; no aspirational commands
-> - Output form: exact copy-pasteable commands per stage (install · build · test · run dev) + an end-to-end user-visible verification path mirroring `verify.sh` full mode
+> - Authoritative paradigm: Google SRE Handbook §8 (Release Engineering) + §14 (Postmortem culture) + 12-Factor §V Build / Release / Run + spec-kit single-source-of-truth verify (`verify.sh` is the only sensor)
+> - Investigation protocol: derive the command chain from `.harness/scripts/{{ script_shell }}/verify.sh` and the project CI; actually run install → build → test → run on a clean checkout to confirm; mine `git log --grep "fix\|hotfix"` and incident reports for Common Failures; no aspirational commands
+> - Output form: 5 fixed sections — First Run Sequence (numbered, expected outputs) · Verification Targets table · Common Failures table (symptom-cause-fix) · Environment Matrix (per-env vars and dependency versions) · End-to-end verify path mirroring `verify.sh` full mode
 
-## Install
-⟨exact commands⟩
+## First Run Sequence
+1. ⟨exact install command⟩ — expected: ⟨…⟩
+2. ⟨exact build command⟩ — expected: ⟨…⟩
+3. ⟨exact test command⟩ — expected: ⟨…⟩
+4. ⟨exact run-dev command⟩ — expected: ⟨…⟩
 
-## Build
-⟨exact commands⟩
+## Verification Targets
+| Command | What it checks | Typical runtime |
+| ------- | -------------- | --------------- |
+| ⟨e.g. `./init.sh`⟩ | ⟨env health + verify.sh full mode⟩ | ⟨~8s⟩ |
+| ⟨`verify.sh lint`⟩ | ⟨lint only⟩ | ⟨~1s⟩ |
+| ⟨`verify.sh test`⟩ | ⟨tests only⟩ | ⟨~3s⟩ |
 
-## Test
-⟨exact commands⟩
+## Common Failures
+| Symptom | Likely cause | Fix |
+| ------- | ------------ | --- |
+| ⟨e.g. "module X not found on import"⟩ | ⟨venv not active⟩ | ⟨`source .venv/bin/activate` or use `uv run`⟩ |
+| ⟨"port already in use"⟩ | ⟨previous dev server still running⟩ | ⟨`lsof -i:<port>` and kill, or change port⟩ |
+| ⟨"verify.sh exits 1 on lint"⟩ | ⟨auto-fixable⟩ | ⟨`ruff check --fix` then re-run⟩ |
 
-## Run dev
-⟨exact commands⟩
+## Environment Matrix
+| Env | Required vars | Pinned dep versions | Notes |
+| --- | ------------- | ------------------- | ----- |
+| dev | ⟨…⟩ | ⟨pyproject lock / package-lock⟩ | ⟨local-only secrets via `.env`⟩ |
+| CI | ⟨…⟩ | ⟨same as dev⟩ | ⟨secrets via CI vault⟩ |
+| prod | ⟨…⟩ | ⟨…⟩ | ⟨secrets via runtime vault⟩ |
 
 ## How to verify a change end-to-end
 ⟨step-by-step user-visible verification path; mirrors `verify.sh` full mode⟩

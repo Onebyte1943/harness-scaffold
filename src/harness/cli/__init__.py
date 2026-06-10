@@ -18,9 +18,11 @@ def cli(ctx: click.Context) -> None:
 def _register_commands() -> None:
     from harness.cli.doctor_cmd import doctor
     from harness.cli.init_cmd import init
+    from harness.cli.state_cmd import state
 
     cli.add_command(init)
     cli.add_command(doctor)
+    cli.add_command(state)
 
 
 _register_commands()

@@ -6,9 +6,29 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Checked with mypy](https://www.mypy-lang.org/static/mypy_badge.svg)](https://mypy-lang.org/)
 
-> Unified AI agent engineering scaffold for teams.
+> **Harness OS** scaffold for AI coding agents — five subsystems, one
+> SDD workflow, every agent on the same contract.
 
-Harness gives your team a **single engineering process** that works across every AI coding agent — Claude Code and Codex CLI by default, with Cursor / Copilot / Gemini extensible via the adapter registry. Instead of each agent inventing its own workflow, harness provides tool-neutral playbooks, a single deterministic verify script, and a Spec-Driven Development cycle, with thin adapter layers that translate them into each agent's native surface.
+Harness gives your team a Harness OS — five orthogonal subsystems for
+running AI coding agents reliably across sessions — wrapped in a
+spec-driven workflow that works the same way across Claude Code, Codex
+CLI, and (via the adapter registry) Cursor / Copilot / Gemini.
+
+## The 5 subsystems
+
+The model is taken from [walkinglabs *learn-harness-engineering*](https://github.com/walkinglabs/learn-harness-engineering) (`skills/harness-creator`) and grounded in Anthropic's [*Effective Harnesses for Long-Running Agents*](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents). Every artifact in a harness project belongs to exactly one subsystem.
+
+| Subsystem | Minimum artifact | Purpose |
+|---|---|---|
+| **Instructions** | `AGENTS.md` | Entry, rules, definition of done |
+| **State** | `feature_list.json` per spec | Current task, status, evidence |
+| **Verification** | `init.sh` (calls `verify.sh`) | Commands the agent MUST run before claiming done |
+| **Scope** | `depends_on` graph in `feature_list.json` | Boundaries and what blocks what |
+| **Lifecycle** | `session-handoff.md` per spec | The next session can resume |
+
+Every session passes through a **Resume → Advance → Handoff** loop:
+read `AGENTS.md` + `init.sh` + `feature_list.json` + `session-handoff.md`,
+pick one feature, verify, flip status, overwrite the handoff, commit.
 
 ## Why Harness?
 
@@ -18,7 +38,7 @@ AI coding agents are powerful but inconsistent. Different agents have different 
 - **No shared quality bar** — agents skip tests, ignore conventions, produce inconsistent output
 - **Lost context** — decisions aren't recorded, specs aren't tracked, handoffs are lossy
 
-Harness solves this with a **one brain, many frontends** architecture:
+Harness solves this with **5 subsystems → one brain, many frontends**:
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -141,6 +161,23 @@ Harness implements a four-phase engineering lifecycle:
 `/hx-next` is the router — call it any time you're unsure what command (and flow level) is appropriate from current state.
 
 Each command maps to a playbook in `.harness/playbooks/` and is invoked through the agent's native surface (e.g., `/hx-verify` in Claude Code or Codex).
+
+## Baseline & Constitution Output Forms
+
+Each command emits artifacts in **one authoritative form**, drawn from the de-facto standard for that artifact category. LLMs writing into a tightly-formed slot can't smuggle in abstract prose — `harness doctor` enforces the form (cite-density floor, required headings, table-vs-prose).
+
+| Command | Artifact | Authoritative form |
+|---|---|---|
+| `/hx-constitution` | `.harness/memory/constitution.md` | [GitHub spec-kit](https://github.com/github/spec-kit) (Core Principles + 2 generic sections + Governance + version line + Sync Impact Report) |
+| `/hx-baseline` | `architecture.md` | arc42 + C4 + Invariants table |
+| `/hx-baseline` | `tech-stack.md` | Thoughtworks Tech Radar (Adopt / Trial / Assess / Hold) |
+| `/hx-baseline` | `product.md` | Cohn user-story + Christensen Jobs-to-be-Done |
+| `/hx-baseline` | `business.md` | **architecture-neutral** — BIZBOK + BABOK + OKR/SLO (works for traditional, CRUD, microservices, ML, data-pipeline projects equally) |
+| `/hx-baseline` | `conventions.md` | Anchor file + GOOD/BAD pairs (Thoughtworks "Anchoring AI to a reference application") |
+| `/hx-baseline` | `glossary.md` | Single ISO/IEC 11179 table |
+| `/hx-baseline` | `setup-and-verify.md` | Google SRE runbook + Common Failures table + Environment Matrix |
+
+`/hx-baseline` runs a **MEASURE → SYNTHESIZE → VERIFY** pipeline: deterministic tools (`pyreverse` / `madge` / `jdeps` / `cargo modules` / `go-callvis` / `syft` / `git churn`) gather ground truth before the LLM organises it into the templates above.
 
 ## Multi-Agent Support
 

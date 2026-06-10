@@ -1,6 +1,6 @@
 [project]
 name = "harness-scaffold"
-version = "0.2.2"
+version = "0.4.0"
 description = "Unified AI agent engineering scaffold for teams"
 readme = "README.md"
 license = "MIT"

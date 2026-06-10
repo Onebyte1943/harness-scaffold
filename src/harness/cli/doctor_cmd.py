@@ -1,7 +1,22 @@
-"""harness doctor — Self-check harness integrity (design v3)."""
+"""harness doctor — 5-subsystem health check.
+
+The doctor reports the project as a Harness OS (per AGENTS.md
+§ Subsystems): five rows — Instructions, State, Verification, Scope,
+Lifecycle — each rolled up to OK / WARN / FAIL with a short detail
+string and any per-check sub-rows the user wants to see (`-v`).
+
+Every individual check still produces a status tuple
+`(status, item, detail)`, but the renderer now groups them under their
+subsystem rather than dumping a flat list. This is a presentation
+change first; the checks themselves are mostly the same as 0.2.x with
+three additions for State/Verification/Lifecycle (init.sh present,
+feature_list.json valid + ID parity, session-handoff.md freshness).
+"""
 
 from __future__ import annotations
 
+import time
+from collections import defaultdict
 from pathlib import Path
 
 import click
@@ -9,6 +24,10 @@ from rich.console import Console
 from rich.table import Table
 
 from harness.core.config import HARNESS_DIR, detect_project_root, load_config
+from harness.core.content_quality import (
+    check_constitution_quality,
+    check_doc_quality,
+)
 from harness.core.i18n import messages
 from harness.core.layout import (
     ADR_DIR,
@@ -27,81 +46,38 @@ from harness.core.layout import (
     SPECS_DIR,
     TEMPLATES_DIR,
 )
+from harness.core.state import FeatureListError, find_feature_lists, has_cycle, load
 
 console = Console()
 
 AGENTS_MD_BUDGET = 32 * 1024  # 32 KiB (§12.4 A)
+HANDOFF_STALE_SECONDS = 7 * 24 * 3600  # 7 days
 
-# Files materialized eagerly by `harness init`.
-REQUIRED_HARNESS_FILES = [
-    "config.toml",
-    "registry.toml",
-]
+# Subsystem labels per AGENTS.md § Subsystems.
+INSTRUCTIONS = "Instructions"
+STATE = "State"
+VERIFICATION = "Verification"
+SCOPE = "Scope"
+LIFECYCLE = "Lifecycle"
 
-# Directories materialized eagerly under .harness/.
-REQUIRED_HARNESS_DIRS = [
-    "playbooks",
-    "scripts",
-    "principle-packs",
-    "evals",
-    "memory",
-    "knowledge",
-    "templates",
-]
+CheckRow = tuple[str, str, str]  # (status, item, detail)
+SubsystemRow = tuple[str, list[CheckRow]]
 
 
-def _check_harness_structure(project_root: Path) -> list[tuple[str, str, str]]:
-    """Check .harness/ directory completeness."""
-    results: list[tuple[str, str, str]] = []
-    harness_dir = project_root / HARNESS_DIR
+# --- Subsystem 1: Instructions ---------------------------------------
 
-    if not harness_dir.exists():
-        results.append(("error", ".harness/", "Directory not found"))
-        return results
 
-    results.append(("ok", ".harness/", "Directory exists"))
+def _check_instructions(root: Path) -> list[CheckRow]:
+    """AGENTS.md, CLAUDE.md, principle packs, constitution."""
+    rows: list[CheckRow] = []
 
-    for f in REQUIRED_HARNESS_FILES:
-        path = harness_dir / f
-        if path.exists():
-            results.append(("ok", f".harness/{f}", "Found"))
-        else:
-            results.append(("error", f".harness/{f}", "Missing"))
-
-    for d in REQUIRED_HARNESS_DIRS:
-        path = harness_dir / d
-        if path.is_dir():
-            count = len(list(path.glob("*")))
-            results.append(("ok", f".harness/{d}/", f"{count} entries"))
-        else:
-            results.append(("error", f".harness/{d}/", "Missing"))
-
-    # Principle packs: at minimum the generic pack must exist.
-    generic = project_root / PRINCIPLE_PACKS_DIR / "generic.md"
-    if generic.exists():
-        results.append(("ok", f"{PRINCIPLE_PACKS_DIR}/generic.md", "Found"))
+    agents_md = root / "AGENTS.md"
+    if not agents_md.exists():
+        rows.append(("error", "AGENTS.md", "Missing"))
     else:
-        results.append(("error", f"{PRINCIPLE_PACKS_DIR}/generic.md", "Missing"))
-
-    # Evals seed (informational; absence is fine until baseline runs)
-    evals_readme = project_root / EVALS_DIR / "README.md"
-    if evals_readme.exists():
-        results.append(("ok", f"{EVALS_DIR}/README.md", "Found"))
-    else:
-        results.append(("warn", f"{EVALS_DIR}/README.md", "Missing (seed format guide)"))
-
-    return results
-
-
-def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
-    """Check shared agent contract + CI + pre-commit + L-RULE/L-STATE."""
-    results: list[tuple[str, str, str]] = []
-
-    agents_md = project_root / "AGENTS.md"
-    if agents_md.exists():
         size = agents_md.stat().st_size
         if size > AGENTS_MD_BUDGET:
-            results.append(
+            rows.append(
                 (
                     "warn",
                     "AGENTS.md",
@@ -109,24 +85,31 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
                 )
             )
         else:
-            results.append(("ok", "AGENTS.md", f"{size // 1024} KiB"))
+            rows.append(("ok", "AGENTS.md", f"{size // 1024} KiB"))
+        # 5-subsystem structure check — protects the contract surface.
+        text = agents_md.read_text()
+        for required in ("## 1. Instructions", "## 2. State", "## 3. Verification"):
+            if required not in text:
+                rows.append(
+                    (
+                        "warn",
+                        "AGENTS.md",
+                        f"Missing 5-subsystem section: {required}",
+                    )
+                )
+
+    # Principle packs (Instructions feed material).
+    generic = root / PRINCIPLE_PACKS_DIR / "generic.md"
+    if generic.exists():
+        rows.append(("ok", f"{PRINCIPLE_PACKS_DIR}/generic.md", "Found"))
     else:
-        results.append(("error", "AGENTS.md", "Missing"))
+        rows.append(("error", f"{PRINCIPLE_PACKS_DIR}/generic.md", "Missing"))
 
-    # GitLab CI + pre-commit are eager-init.
-    for label, rel in (
-        ("GitLab CI", GITLAB_CI_CONFIG),
-        ("pre-commit", PRE_COMMIT_CONFIG),
-    ):
-        path = project_root / rel
-        if path.exists():
-            results.append(("ok", rel, "Found"))
-        else:
-            results.append(("error", rel, f"Missing ({label})"))
-
-    # Constitution (L-RULE) — lazy: created by /hx-constitution.
-    constitution = project_root / CONSTITUTION_PATH
-    if constitution.exists():
+    # Constitution (lazy until /hx-constitution).
+    constitution = root / CONSTITUTION_PATH
+    if not constitution.exists():
+        rows.append(("ok", CONSTITUTION_PATH, "Not yet created (run /hx-constitution)"))
+    else:
         content = constitution.read_text().strip()
         lines = [
             line
@@ -134,7 +117,7 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
             if line.strip() and not line.startswith("#") and not line.startswith(">")
         ]
         if len(lines) < 3:
-            results.append(
+            rows.append(
                 (
                     "warn",
                     CONSTITUTION_PATH,
@@ -142,18 +125,219 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
                 )
             )
         else:
-            results.append(("ok", CONSTITUTION_PATH, f"{len(lines)} content lines"))
-    else:
-        results.append(("ok", CONSTITUTION_PATH, "Not yet created (run /hx-constitution)"))
+            rows.append(("ok", CONSTITUTION_PATH, f"{len(lines)} content lines"))
 
-    # Knowledge docs (L-STATE) — lazy: created by /hx-baseline.
-    knowledge_root = project_root / KNOWLEDGE_DIR
+        # spec-kit format checks (Version line, Governance, Sync Impact Report).
+        rows.extend(check_constitution_quality(constitution))
+
+    return rows
+
+
+# --- Subsystem 2: State ---------------------------------------------
+
+
+def _check_state(root: Path) -> list[CheckRow]:
+    """feature_list.json per spec — schema + ID parity vs tasks.md."""
+    rows: list[CheckRow] = []
+    specs = root / SPECS_DIR
+    if not specs.is_dir():
+        rows.append(("ok", f"{SPECS_DIR}/", "Not yet created (lazy, by /hx-propose)"))
+        return rows
+
+    feature_lists = find_feature_lists(root)
+    spec_dirs = [p for p in specs.iterdir() if p.is_dir()]
+
+    if not spec_dirs:
+        rows.append(("ok", f"{SPECS_DIR}/", "No spec dirs yet"))
+        return rows
+
+    # Per-spec: every spec with tasks.md should also have feature_list.json
+    # with id parity.
+    for spec in sorted(spec_dirs):
+        tasks_md = spec / "tasks.md"
+        feat_json = spec / "feature_list.json"
+        rel = f"{SPECS_DIR}/{spec.name}"
+
+        if not tasks_md.exists() and not feat_json.exists():
+            # Pre-/hx-tasks: nothing to check.
+            continue
+
+        if tasks_md.exists() and not feat_json.exists():
+            rows.append(
+                (
+                    "warn",
+                    f"{rel}/feature_list.json",
+                    "Missing — re-run /hx-tasks to generate State machine truth",
+                )
+            )
+            continue
+        if feat_json.exists() and not tasks_md.exists():
+            rows.append(
+                (
+                    "warn",
+                    f"{rel}/feature_list.json",
+                    "Present but tasks.md missing — narrative out of sync",
+                )
+            )
+
+        # Schema check.
+        try:
+            fl = load(feat_json)
+        except FeatureListError as exc:
+            rows.append(("error", f"{rel}/feature_list.json", str(exc)))
+            continue
+
+        # Cycle check.
+        if has_cycle(fl.features):
+            rows.append(("error", f"{rel}/feature_list.json", "depends_on graph has a cycle"))
+        else:
+            rows.append(("ok", f"{rel}/feature_list.json", f"{len(fl.features)} feature(s) valid"))
+
+        # ID-parity check vs tasks.md (best effort — tokens like T1.1 in
+        # markdown bullets). False positives possible if naming drifts;
+        # we WARN rather than FAIL.
+        if tasks_md.exists():
+            md_text = tasks_md.read_text()
+            json_ids = {f.id for f in fl.features}
+            present = {fid for fid in json_ids if fid in md_text}
+            missing = json_ids - present
+            if missing:
+                rows.append(
+                    (
+                        "warn",
+                        f"{rel}",
+                        f"feature_list.json ids not found in tasks.md: "
+                        f"{', '.join(sorted(missing))}",
+                    )
+                )
+
+    if not feature_lists:
+        rows.append(
+            (
+                "ok",
+                f"{SPECS_DIR}/*/feature_list.json",
+                "No feature_list.json files yet (lazy, by /hx-tasks)",
+            )
+        )
+
+    return rows
+
+
+# --- Subsystem 3: Verification ---------------------------------------
+
+
+def _check_verification(root: Path) -> list[CheckRow]:
+    """init.sh, verify.sh, last-verify freshness, CI/pre-commit."""
+    rows: list[CheckRow] = []
+
+    try:
+        config = load_config(root)
+        shell = config.script_shell
+    except FileNotFoundError:
+        shell = "sh"
+
+    # init.sh — entry script.
+    init_name = "init.sh" if shell == "sh" else "init.ps1"
+    init_path = root / init_name
+    if not init_path.exists():
+        rows.append(("error", init_name, "Missing — re-run harness init"))
+    else:
+        if shell == "sh":
+            mode = init_path.stat().st_mode
+            if not mode & 0o111:
+                rows.append(
+                    (
+                        "warn",
+                        init_name,
+                        "Not executable — `chmod +x init.sh` or re-run harness init --force",
+                    )
+                )
+            else:
+                rows.append(("ok", init_name, "Executable"))
+        else:
+            rows.append(("ok", init_name, "Present"))
+
+    # verify.sh.
+    verify = (
+        root / HARNESS_DIR / "scripts" / shell / ("verify.sh" if shell == "sh" else "verify.ps1")
+    )
+    if not verify.exists():
+        rows.append(("error", str(verify.relative_to(root)), "Missing"))
+    else:
+        rows.append(("ok", str(verify.relative_to(root)), "Present"))
+
+    # Last verify status (lazy: only present after init.sh runs).
+    last = root / HARNESS_DIR / ".last-verify.json"
+    if last.exists():
+        try:
+            import json as _json
+
+            data = _json.loads(last.read_text())
+            ts = data.get("timestamp")
+            status = data.get("status", "unknown")
+            if isinstance(ts, (int, float)):
+                age = int(time.time() - ts)
+                if age < 60:
+                    age_str = f"{age}s ago"
+                elif age < 3600:
+                    age_str = f"{age // 60}m ago"
+                else:
+                    age_str = f"{age // 3600}h ago"
+            else:
+                age_str = "unknown age"
+            level = "ok" if status == "green" else "warn"
+            rows.append(
+                (
+                    level,
+                    f"{HARNESS_DIR}/.last-verify.json",
+                    f"{status} ({age_str})",
+                )
+            )
+        except (ValueError, OSError) as exc:
+            rows.append(
+                (
+                    "warn",
+                    f"{HARNESS_DIR}/.last-verify.json",
+                    f"Unparseable: {exc}",
+                )
+            )
+    else:
+        rows.append(
+            (
+                "ok",
+                f"{HARNESS_DIR}/.last-verify.json",
+                "Not yet recorded (run ./init.sh)",
+            )
+        )
+
+    # CI + pre-commit (also Verification-layer sensors).
+    for label, rel in (
+        ("GitLab CI", GITLAB_CI_CONFIG),
+        ("pre-commit", PRE_COMMIT_CONFIG),
+    ):
+        path = root / rel
+        if path.exists():
+            rows.append(("ok", rel, "Found"))
+        else:
+            rows.append(("error", rel, f"Missing ({label})"))
+
+    return rows
+
+
+# --- Subsystem 4: Scope ---------------------------------------------
+
+
+def _check_scope(root: Path) -> list[CheckRow]:
+    """Knowledge base, ADRs, agent dir, templates — define & evidence the
+    boundaries the agent must respect."""
+    rows: list[CheckRow] = []
+
+    knowledge_root = root / KNOWLEDGE_DIR
     if knowledge_root.is_dir():
         present = [doc for doc in KNOWLEDGE_DOCS if (knowledge_root / f"{doc}.md").exists()]
         missing = [f"{doc}.md" for doc in KNOWLEDGE_DOCS if doc not in present]
         if not present:
-            # Empty knowledge dir post-init is the normal state — not a warning.
-            results.append(
+            rows.append(
                 (
                     "ok",
                     f"{KNOWLEDGE_DIR}/",
@@ -161,7 +345,7 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
                 )
             )
         elif missing:
-            results.append(
+            rows.append(
                 (
                     "warn",
                     f"{KNOWLEDGE_DIR}/",
@@ -171,19 +355,23 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
                 )
             )
         else:
-            results.append(
+            rows.append(
                 (
                     "ok",
                     f"{KNOWLEDGE_DIR}/",
                     f"All {len(KNOWLEDGE_DOCS)} core docs present",
                 )
             )
-        howto = project_root / KNOWLEDGE_HOWTO_DIR
+        # Per-doc content-quality checks (cite-density, required-sections,
+        # structure-form). Skips files that are not present.
+        for doc in present:
+            rows.extend(check_doc_quality(knowledge_root / f"{doc}.md"))
+        howto = root / KNOWLEDGE_HOWTO_DIR
         if howto.is_dir():
             n = len(list(howto.glob("*.md")))
-            results.append(("ok", f"{KNOWLEDGE_HOWTO_DIR}/", f"{n} recipe(s)"))
+            rows.append(("ok", f"{KNOWLEDGE_HOWTO_DIR}/", f"{n} recipe(s)"))
     else:
-        results.append(
+        rows.append(
             (
                 "ok",
                 f"{KNOWLEDGE_DIR}/",
@@ -191,69 +379,108 @@ def _check_contract_layer(project_root: Path) -> list[tuple[str, str, str]]:
             )
         )
 
-    # Per-change specs + ADRs + progress log are lazy.
-    for d, creator in (
-        (SPECS_DIR, "/hx-propose"),
-        (ADR_DIR, "/hx-plan"),
-    ):
-        path = project_root / d
-        if path.is_dir():
-            results.append(("ok", f"{d}/", "Found"))
-        else:
-            results.append(("ok", f"{d}/", f"Not yet created (lazy, by {creator})"))
-
-    progress = project_root / PROGRESS_PATH
-    if progress.exists():
-        results.append(("ok", PROGRESS_PATH, "Found"))
+    adr = root / ADR_DIR
+    if adr.is_dir():
+        rows.append(("ok", f"{ADR_DIR}/", "Found"))
     else:
-        results.append(("ok", PROGRESS_PATH, "Not yet created (lazy, by /hx-implement)"))
+        rows.append(("ok", f"{ADR_DIR}/", "Not yet created (lazy, by /hx-plan)"))
 
-    agent_dir = project_root / AGENT_DIR
-    if agent_dir.is_dir():
-        results.append(("ok", f"{AGENT_DIR}/", "Found"))
+    templates = root / TEMPLATES_DIR
+    if templates.is_dir():
+        n = len(list(templates.glob("*")))
+        rows.append(("ok", f"{TEMPLATES_DIR}/", f"{n} project-local override(s)"))
+
+    # Evals seed (boundary evidence for `harness doctor`-style regressions).
+    evals_readme = root / EVALS_DIR / "README.md"
+    if evals_readme.exists():
+        rows.append(("ok", f"{EVALS_DIR}/README.md", "Found"))
     else:
-        results.append(("warn", f"{AGENT_DIR}/", "Missing (re-run harness init)"))
+        rows.append(("warn", f"{EVALS_DIR}/README.md", "Missing (seed format guide)"))
 
-    templates_dir = project_root / TEMPLATES_DIR
-    if templates_dir.is_dir():
-        n = len(list(templates_dir.glob("*")))
-        results.append(("ok", f"{TEMPLATES_DIR}/", f"{n} project-local override(s)"))
-
-    return results
-
-
-def _check_legacy_layout(project_root: Path) -> list[tuple[str, str, str]]:
-    """Surface the v1 layout — design v3 doesn't migrate, just warns."""
-    results: list[tuple[str, str, str]] = []
-    if (project_root / LEGACY_ARTIFACTS_DIR).exists():
-        results.append(
+    # Legacy v1 layout warnings — treated as scope contamination.
+    if (root / LEGACY_ARTIFACTS_DIR).exists():
+        rows.append(
             (
                 "warn",
                 f"{LEGACY_ARTIFACTS_DIR}/",
-                "Legacy v1 layout detected — design v3 moved artifacts to "
-                "specs/ and .harness/knowledge/; review and remove or merge",
+                "Legacy v1 layout detected — design v3 moved artifacts to specs/ "
+                "and .harness/knowledge/; review and remove or merge",
             )
         )
-    if (project_root / LEGACY_CONSTITUTION_PATH).exists():
-        results.append(
+    if (root / LEGACY_CONSTITUTION_PATH).exists():
+        rows.append(
             (
                 "warn",
                 LEGACY_CONSTITUTION_PATH,
                 f"Legacy location — design v3 expects {CONSTITUTION_PATH}",
             )
         )
-    return results
+
+    return rows
 
 
-def _check_adapters(project_root: Path) -> list[tuple[str, str, str]]:
-    """Check adapter file integrity."""
-    results: list[tuple[str, str, str]] = []
+# --- Subsystem 5: Lifecycle -----------------------------------------
 
+
+def _check_lifecycle(root: Path) -> list[CheckRow]:
+    """progress.md, .agent/, session-handoff.md per active spec."""
+    rows: list[CheckRow] = []
+
+    progress = root / PROGRESS_PATH
+    if progress.exists():
+        rows.append(("ok", PROGRESS_PATH, "Found"))
+    else:
+        rows.append(("ok", PROGRESS_PATH, "Not yet created (lazy, by /hx-implement)"))
+
+    agent_dir = root / AGENT_DIR
+    if agent_dir.is_dir():
+        rows.append(("ok", f"{AGENT_DIR}/", "Found"))
+    else:
+        rows.append(("warn", f"{AGENT_DIR}/", "Missing (re-run harness init)"))
+
+    # Per-spec session-handoff.md: present? stale (>7d)?
+    specs = root / SPECS_DIR
+    if specs.is_dir():
+        for spec in sorted(p for p in specs.iterdir() if p.is_dir()):
+            handoff = spec / "session-handoff.md"
+            rel = f"{SPECS_DIR}/{spec.name}/session-handoff.md"
+            if not handoff.exists():
+                # If feature_list.json exists for this spec, the agent has
+                # been working on it — handoff should exist too.
+                if (spec / "feature_list.json").exists():
+                    rows.append(("warn", rel, "Missing — write at session end"))
+                else:
+                    # Pre-/hx-implement: it's reasonable not to have one yet.
+                    rows.append(("ok", rel, "Not yet written"))
+                continue
+            age = int(time.time() - handoff.stat().st_mtime)
+            if age > HANDOFF_STALE_SECONDS:
+                days = age // (24 * 3600)
+                rows.append(("warn", rel, f"Stale ({days}d) — overwrite at session end"))
+            else:
+                if age < 60:
+                    age_str = f"{age}s ago"
+                elif age < 3600:
+                    age_str = f"{age // 60}m ago"
+                elif age < 86400:
+                    age_str = f"{age // 3600}h ago"
+                else:
+                    age_str = f"{age // 86400}d ago"
+                rows.append(("ok", rel, f"Updated {age_str}"))
+
+    return rows
+
+
+# --- Adapter checks (cross-subsystem; reported under Instructions) ---
+
+
+def _check_adapters(root: Path) -> list[CheckRow]:
+    rows: list[CheckRow] = []
     try:
-        config = load_config(project_root)
+        config = load_config(root)
     except FileNotFoundError:
-        results.append(("error", "config", "Cannot load harness config"))
-        return results
+        rows.append(("error", "config", "Cannot load harness config"))
+        return rows
 
     from harness.adapters import get_adapter
     from harness.core.scaffold import ScaffoldEngine
@@ -264,22 +491,35 @@ def _check_adapters(project_root: Path) -> list[tuple[str, str, str]]:
     for agent_name in config.agents:
         try:
             adapter = get_adapter(agent_name, engine)
-            issues = adapter.validate(project_root)
+            issues = adapter.validate(root)
             if issues:
                 for issue in issues:
-                    results.append(("warn", f"{agent_name} adapter", issue))
+                    rows.append(("warn", f"{agent_name} adapter", issue))
             else:
-                results.append(("ok", f"{agent_name} adapter", "All files present"))
+                rows.append(("ok", f"{agent_name} adapter", "All files present"))
         except KeyError:
-            results.append(("warn", f"{agent_name} adapter", "No adapter implementation"))
+            rows.append(("warn", f"{agent_name} adapter", "No adapter implementation"))
+    return rows
 
-    return results
+
+# --- Roll-up & rendering --------------------------------------------
+
+
+def _rollup(rows: list[CheckRow]) -> tuple[str, int, int, int]:
+    """Reduce a subsystem's rows to (worst-status, ok, warn, error)."""
+    ok = sum(1 for s, _, _ in rows if s == "ok")
+    warn = sum(1 for s, _, _ in rows if s == "warn")
+    err = sum(1 for s, _, _ in rows if s == "error")
+    if err:
+        worst = "error"
+    elif warn:
+        worst = "warn"
+    else:
+        worst = "ok"
+    return worst, ok, warn, err
 
 
 def _resolve_output_lang(root: Path) -> str:
-    """Read the project's output_lang from .harness/config.toml. Falls
-    back to `en` if config is unreadable — doctor never crashes on a
-    misconfigured project just to print its own diagnostics."""
     try:
         return load_config(root).output_lang
     except Exception:
@@ -289,11 +529,9 @@ def _resolve_output_lang(root: Path) -> str:
 @click.command()
 @click.option("--verbose", "-v", is_flag=True, help="Show all checks including passing.")
 def doctor(verbose: bool) -> None:
-    """Check harness integrity and report issues."""
+    """Check harness integrity, organized by the 5 subsystems."""
     root = detect_project_root()
     if root is None:
-        # No project context, so no config to read — default to en for
-        # this one diagnostic message.
         m = messages("en")
         console.print(f"[red]{m.doctor_not_in_project}[/red]")
         raise SystemExit(1)
@@ -301,42 +539,64 @@ def doctor(verbose: bool) -> None:
     m = messages(_resolve_output_lang(root))
     console.print(f"[bold]{m.doctor_header.format(name=root.name)}[/bold]\n")
 
-    all_results: list[tuple[str, str, str]] = []
-    all_results.extend(_check_harness_structure(root))
-    all_results.extend(_check_contract_layer(root))
-    all_results.extend(_check_legacy_layout(root))
-    all_results.extend(_check_adapters(root))
-
-    table = Table(show_header=True, header_style="bold")
-    table.add_column(m.doctor_table_status, width=6)
-    table.add_column(m.doctor_table_item)
-    table.add_column(m.doctor_table_detail)
+    # Collect per-subsystem rows.
+    by_subsystem: dict[str, list[CheckRow]] = defaultdict(list)
+    by_subsystem[INSTRUCTIONS] = _check_instructions(root) + _check_adapters(root)
+    by_subsystem[STATE] = _check_state(root)
+    by_subsystem[VERIFICATION] = _check_verification(root)
+    by_subsystem[SCOPE] = _check_scope(root)
+    by_subsystem[LIFECYCLE] = _check_lifecycle(root)
 
     icons = {
         "ok": f"[green]{m.doctor_ok}[/green]",
         "warn": f"[yellow]{m.doctor_warn}[/yellow]",
         "error": f"[red]{m.doctor_fail}[/red]",
     }
-    errors = 0
-    warnings = 0
 
-    for status, item, detail in all_results:
-        if status == "error":
-            errors += 1
-        elif status == "warn":
-            warnings += 1
-        if verbose or status != "ok":
-            table.add_row(icons[status], item, detail)
+    # Top-level subsystem summary table (always shown).
+    summary = Table(show_header=True, header_style="bold cyan")
+    summary.add_column("Subsystem", style="bold")
+    summary.add_column("Status", width=8)
+    summary.add_column("Detail")
 
-    if verbose or errors > 0 or warnings > 0:
-        console.print(table)
+    total_err = 0
+    total_warn = 0
+    for sub in (INSTRUCTIONS, STATE, VERIFICATION, SCOPE, LIFECYCLE):
+        rows = by_subsystem[sub]
+        worst, ok, warn, err = _rollup(rows)
+        total_err += err
+        total_warn += warn
+        detail = f"{ok} OK · {warn} WARN · {err} FAIL" if rows else "no checks ran"
+        summary.add_row(sub, icons[worst], detail)
+
+    console.print(summary)
+
+    # Per-subsystem detail table — verbose shows all; otherwise only
+    # rows that are not OK.
+    detail_table = Table(show_header=True, header_style="bold")
+    detail_table.add_column("Subsystem", width=14)
+    detail_table.add_column(m.doctor_table_status, width=6)
+    detail_table.add_column(m.doctor_table_item)
+    detail_table.add_column(m.doctor_table_detail)
+
+    have_detail_rows = False
+    for sub in (INSTRUCTIONS, STATE, VERIFICATION, SCOPE, LIFECYCLE):
+        for status, item, det in by_subsystem[sub]:
+            if not verbose and status == "ok":
+                continue
+            detail_table.add_row(sub, icons[status], item, det)
+            have_detail_rows = True
+
+    if have_detail_rows:
+        console.print()
+        console.print(detail_table)
 
     console.print()
-    if errors > 0:
-        summary = m.doctor_summary_errors.format(errors=errors, warnings=warnings)
-        console.print(f"[red bold]{summary}[/red bold]")
+    if total_err > 0:
+        msg = m.doctor_summary_errors.format(errors=total_err, warnings=total_warn)
+        console.print(f"[red bold]{msg}[/red bold]")
         raise SystemExit(1)
-    elif warnings > 0:
-        console.print(f"[green]{m.doctor_summary_warnings.format(warnings=warnings)}[/green]")
+    elif total_warn > 0:
+        console.print(f"[green]{m.doctor_summary_warnings.format(warnings=total_warn)}[/green]")
     else:
         console.print(f"[green bold]{m.doctor_all_passed}[/green bold]")
